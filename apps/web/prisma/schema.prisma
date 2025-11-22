@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,31 +8,23 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-//// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-//// Models
-//// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-
 model User {
-  id             String   @id @default(cuid())
-  name           String?
-  email          String   @unique
-  emailVerified  DateTime?
-  image          String?
-  passwordHash   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Relations
-  posts          Post[]
-  comments       Comment[]
-  votes          Vote[]
-  commentVotes   CommentVote[]
-  saved          Saved[]
-  subforums      Subforum[]
-
-  // NextAuth
-  accounts       Account[]
-  sessions       Session[]
+  id            String        @id @default(cuid())
+  name          String?
+  email         String        @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  accounts      Account[]
+  comments      Comment[]
+  commentVotes  CommentVote[]
+  posts         Post[]
+  saved         Saved[]
+  sessions      Session[]
+  subforums     Subforum[]
+  votes         Vote[]
 }
 
 model Account {
@@ -50,8 +40,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -61,8 +50,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -74,43 +62,39 @@ model VerificationToken {
 }
 
 model Post {
-  id          String   @id @default(cuid())
-  title       String
-  content     String?
-  mediaUrl    String?
-  imageUrls   Json?
-  userId      String?
-  userEmail   String?
-  userName    String?
-  subforumId  String?
-  subforum    Subforum? @relation(fields: [subforumId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  comments    Comment[]
-  votes       Vote[]
-  saved       Saved[]
-}
-
-model Comment {
-  id         String   @id @default(cuid())
-  body       String
-  postId     String
+  id         String    @id @default(cuid())
+  title      String
+  content    String?
+  mediaUrl   String?
+  imageUrls  Json?
   userId     String?
   userEmail  String?
   userName   String?
-  parentId   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  subforumId String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  comments   Comment[]
+  subforum   Subforum? @relation(fields: [subforumId], references: [id])
+  user       User?     @relation(fields: [userId], references: [id])
+  saved      Saved[]
+  votes      Vote[]
+}
 
-  // Relations
-  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  parent     Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
-  replies    Comment[] @relation("CommentToComment")
-  votes      CommentVote[]
+model Comment {
+  id        String        @id @default(cuid())
+  body      String
+  postId    String
+  userId    String?
+  userEmail String?
+  userName  String?
+  parentId  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  parent    Comment?      @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]     @relation("CommentToComment")
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User?         @relation(fields: [userId], references: [id])
+  votes     CommentVote[]
 }
 
 model Vote {
@@ -120,10 +104,8 @@ model Vote {
   postId    String
   value     Int
   createdAt DateTime @default(now())
-
-  // Relations
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([userEmail, postId])
   @@index([postId])
@@ -136,10 +118,8 @@ model CommentVote {
   commentId String
   value     Int
   createdAt DateTime @default(now())
-
-  // Relations
-  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([userEmail, commentId])
   @@index([commentId])
@@ -151,10 +131,8 @@ model Saved {
   userEmail String?
   postId    String
   createdAt DateTime @default(now())
-
-  // Relations
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([userEmail, postId])
   @@index([postId])
@@ -168,12 +146,10 @@ model Subforum {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   creatorId   String?
-  creator     User?    @relation(fields: [creatorId], references: [id], onDelete: SetNull)
-
   posts       Post[]
+  creator     User?    @relation(fields: [creatorId], references: [id])
 }
 
-// NEW: used by /api/auth/reset/request for password reset flow
 model PasswordResetToken {
   id        String   @id @default(cuid())
   email     String
