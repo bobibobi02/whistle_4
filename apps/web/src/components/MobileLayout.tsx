@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { ReactNode } from 'react';
 
 interface MobileLayoutProps {
@@ -34,8 +34,9 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
         {children}
       </main>
       <footer className="bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 py-4 text-center">
-        © 2025 Whistle. All rights reserved.
+         2025 Whistle. All rights reserved.
       </footer>
     </div>
   );
 }
+

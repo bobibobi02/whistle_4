@@ -1,32 +1,41 @@
-'use client';
+﻿import { useEffect, useState } from "react";
 
-import { useEffect, useState } from 'react';
+type Theme = "light" | "dark";
 
 export default function DarkModeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    if (stored) {
-      setTheme(stored as 'light' | 'dark');
-      document.documentElement.classList.toggle('dark', stored === 'dark');
-    }
+    if (typeof window === "undefined") return;
+
+    const stored =
+      (localStorage.getItem("whistle-theme") as Theme | null) ?? "dark";
+
+    setTheme(stored);
+
+    const root = document.documentElement;
+    root.classList.toggle("dark", stored === "dark");
+    (root as any).dataset.theme = stored;
   }, []);
 
-  const toggleTheme = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
-    localStorage.setItem('theme', next);
-  };
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    (root as any).dataset.theme = theme;
+    localStorage.setItem("whistle-theme", theme);
+  }, [theme]);
+
+  const label = theme === "dark" ? "Whistle Dark" : "Whistle Light";
 
   return (
     <button
-      onClick={toggleTheme}
-      aria-label="Toggle dark mode"
-      className="p-2 rounded focus:outline-none focus:ring"
+      type="button"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="theme-toggle"
     >
-      {theme === 'light' ? '🌙' : '☀️'}
+      {label}
     </button>
   );
 }

@@ -1,4 +1,4 @@
-// pages/api/dev/mail-env.ts
+﻿// pages/api/dev/mail-env.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 
 function mask(v?: string | null, keep = 6) {

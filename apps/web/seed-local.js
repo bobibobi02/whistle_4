@@ -24,12 +24,12 @@
       create: { name: 'General', description: 'Default subforum' },
     });
 
-    // 3) A hello post so the feed isn’t empty
+    // 3) A hello post so the feed isnвЂ™t empty
     const post = await prisma.post.create({
       data: {
         userId: user.id,
         userEmail: user.email,
-        title: 'We are back ✅',
+        title: 'We are back вњ…',
         content:
           'The database was reset after migration, so this is a fresh seed post. Continue creating posts as usual.',
         subforumName: subforum.name,

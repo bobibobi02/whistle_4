@@ -1,4 +1,4 @@
-/* styles/comments.css */
+﻿/* styles/comments.css */
 /* Dark-friendly tokens (tweak to match your palette) */
 :root {
   --c-border: #2e3a43;
@@ -65,7 +65,7 @@ button.btn-solid {
   min-height: 70px;
 }
 
-/* Little status pills (Loading…, No comments yet, etc.) */
+/* Little status pills (Loading¦, No comments yet, etc.) */
 .meta-pill {
   display: inline-block;
   padding: 6px 12px;
@@ -90,3 +90,4 @@ button.btn-solid {
   outline: 2px solid #6bb1ff;
   outline-offset: 2px;
 }
+

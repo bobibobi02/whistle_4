@@ -1,4 +1,4 @@
-interface StatsCardProps {
+﻿interface StatsCardProps {
   title: string;
   value: number;
 }

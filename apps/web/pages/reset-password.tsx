@@ -1,4 +1,4 @@
-// pages/reset-password.tsx
+﻿// pages/reset-password.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
         throw new Error(data?.error || "Failed to reset password");
       }
 
-      setMsg("Password updated. Redirecting to login…");
+      setMsg("Password updated. Redirecting to login");
       // If API included a redirectTo, use it; else send to /login
       const go = data?.redirectTo || "/login";
       setTimeout(() => router.push(go), 1200);
@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={{ width: "100%", background: "#0b1116", color: "#e5e7eb", border: "1px solid #1f2937", borderRadius: 8, padding: "10px 12px", outline: "none" }}
-              placeholder="••••••••"
+              placeholder=""
               minLength={8}
               required
             />
@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               style={{ width: "100%", background: "#0b1116", color: "#e5e7eb", border: "1px solid #1f2937", borderRadius: 8, padding: "10px 12px", outline: "none" }}
-              placeholder="••••••••"
+              placeholder=""
               minLength={8}
               required
             />
@@ -112,9 +112,10 @@ export default function ResetPasswordPage() {
             opacity: loading ? 0.8 : 1,
           }}
         >
-          {loading ? "Updating…" : "Update password"}
+          {loading ? "Updating" : "Update password"}
         </button>
       </form>
     </div>
   );
 }
+

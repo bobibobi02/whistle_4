@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+﻿import type { NextApiRequest, NextApiResponse } from 'next';
 
 type Result =
   | { ok: true; message: string; info: { host?: string; port?: number; secure?: boolean } }

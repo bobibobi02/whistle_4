@@ -1,4 +1,4 @@
-// lib/rateLimit.ts
+﻿// lib/rateLimit.ts
 // Lightweight, dev-friendly rate limiter with two layers:
 // 1) Low-level token-bucket helpers: allow()/allowFromIP()  (kept for backward-compat)
 // 2) High-level API helper: limitOrThrow(req, res, { key, limit, windowMs })

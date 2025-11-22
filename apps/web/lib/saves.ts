@@ -1,4 +1,4 @@
-// apps/web/lib/saves.ts
+﻿// apps/web/lib/saves.ts
 // Central place to store & read saved posts (localStorage-based)
 
 export const SAVE_EVENT = "whistle:posts-mutated"; // profile listens for this

@@ -1,4 +1,4 @@
-export default function ExportLogsButton() {
+﻿export default function ExportLogsButton() {
   const download = () => {
     const link = document.createElement('a');
     link.href = '/api/mod/exportLogs';

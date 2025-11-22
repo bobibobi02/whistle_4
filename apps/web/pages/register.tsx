@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/router';
 import { useState } from 'react';
@@ -94,7 +94,7 @@ export default function RegisterPage() {
           )}
 
           <button type="submit" className="btn-solid" disabled={busy} style={{ opacity: busy ? .7 : 1 }}>
-            {busy ? 'Creating…' : 'Create account'}
+            {busy ? 'Creating' : 'Create account'}
           </button>
         </div>
 
@@ -108,3 +108,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+

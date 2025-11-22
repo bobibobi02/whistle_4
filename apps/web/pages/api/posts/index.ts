@@ -1,117 +1,139 @@
-﻿// pages/api/posts/index.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getServerSession } from "next-auth";
+﻿import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
 import { PrismaClient } from "@prisma/client";
-import crypto from "node:crypto";
+
 const prisma = new PrismaClient();
 
-type Col = { name: string; notnull: 0|1; dflt_value: any };
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const session = await getServerSession(req, res, authOptions);
 
-async function postCols(): Promise<Col[]> {
-  try { return await prisma.$queryRawUnsafe<Col[]>(`PRAGMA table_info('Post')`); }
-  catch { return []; }
-}
-function has(cols: Col[], n: string){ return cols.some(c => c.name.toLowerCase() === n.toLowerCase()); }
-function genId(){ return crypto.randomBytes(16).toString("hex"); }
-
-async function insertPostRaw(val:{title:string; body:string; userId?:string; forumId?:string|null}){
-  const cols = await postCols();
-  const cl:string[] = [], vl:string[] = []; const params:any[] = [];
-  // ALWAYS set id if column exists
-  if (has(cols,"id")) { cl.push("id"); vl.push("?"); params.push(genId()); }
-  if (has(cols,"title")) { cl.push("title"); vl.push("?"); params.push(val.title); }
-  if (has(cols,"body"))  { cl.push("body");  vl.push("?"); params.push(val.body); }
-  if (has(cols,"userId") || has(cols,"userid")) { cl.push(has(cols,"userId")?"userId":"userid"); vl.push("?"); params.push(val.userId); }
-
-  // forum FK if any of these columns exist
-  const fk = has(cols,"subforumId")||has(cols,"subforumid") ? "subforumId"
-          : has(cols,"forumId")||has(cols,"forumid")         ? "forumId"
-          : has(cols,"communityId")||has(cols,"communityid") ? "communityId"
-          : null;
-  if (fk && val.forumId){ cl.push(fk); vl.push("?"); params.push(val.forumId); }
-
-  // timestamps if present — just set them
-  if (has(cols,"createdAt")||has(cols,"createdat")) { cl.push(has(cols,"createdAt")?"createdAt":"createdat"); vl.push("?"); params.push(new Date().toISOString()); }
-  if (has(cols,"updatedAt")||has(cols,"updatedat")) { cl.push(has(cols,"updatedAt")?"updatedAt":"updatedat"); vl.push("?"); params.push(new Date().toISOString()); }
-
-  if (!cl.length) throw new Error("No insertable columns in Post");
-  await prisma.$executeRawUnsafe(`INSERT INTO Post (${cl.join(",")}) VALUES (${vl.join(",")})`, ...params);
-  const row = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM Post ORDER BY rowid DESC LIMIT 1`);
-  return row?.[0] ?? { ok:true };
-}
-
-function detectForumTable = async () => {
-  // Use PRAGMA foreign keys info to guess; fallback to column presence
-  try {
-    const fks = await prisma.$queryRawUnsafe<any[]>(`PRAGMA foreign_key_list('Post')`);
-    const t = fks?.find(x => ["Subforum","Forum","Community"].includes(String(x.table)))?.table;
-    if (t) return String(t);
-  } catch {}
-  const cols = await postCols();
-  if (has(cols,"subforumId")||has(cols,"subforumid")) return "Subforum";
-  if (has(cols,"forumId")||has(cols,"forumid"))       return "Forum";
-  if (has(cols,"communityId")||has(cols,"communityid")) return "Community";
-  return null;
-};
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse){
-  try{
-    if (req.method==="GET"){
-      const take = Math.max(1, Math.min(100, Number(req.query.limit)||12));
-      const posts = await prisma.post.findMany({
-        take, orderBy:[{ createdAt: "desc" as const }],
-        include:{ user:{ select:{ id:true, name:true } } }
-      }).catch(async()=> prisma.$queryRawUnsafe<any[]>(`SELECT * FROM Post ORDER BY rowid DESC LIMIT ${take}`));
-      return res.status(200).json(posts);
+  // =============== POST: create post ===============
+  if (req.method === "POST") {
+    if (!session?.user?.email) {
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (req.method==="POST"){
-      const session = await getServerSession(req, res, authOptions);
-      let userId = (session?.user as any)?.id ?? null;
-      let userEmail = (session?.user as any)?.email ?? null;
+    try {
+      const {
+        title,
+        content,
+        body,
+        subforumName,
+        imageUrl,
+        imageUrls,
+        mediaUrl,
+      } = req.body || {};
 
-      if (!userId && !userEmail && process.env.NODE_ENV!=="production"){
-        const any = await prisma.user.findFirst();
-        userId = any?.id ?? null; userEmail = any?.email ?? null;
+      const textBody = (body ?? content ?? "").toString();
+      const cleanTitle = (title ?? "").toString();
+
+      if (!cleanTitle && !textBody) {
+        return res.status(400).json({ error: "Title or body is required" });
       }
-      if (!userId && !userEmail) return res.status(401).json({ error:"Not authenticated" });
-      if (!userId && userEmail){ const u = await prisma.user.findUnique({ where:{ email:userEmail } }); userId = u?.id ?? null; }
 
-      const { title, body="" } = (req.body||{}) as {title?:string; body?:string};
-      if (!title) return res.status(400).json({ error:"title required" });
+      // ----- normalize loop / subforum name -----
+      const rawLoop = (subforumName ?? "").toString().trim();
+      const loopName = rawLoop || "general";
 
-      // try clean Prisma first
-      try{
-        const data:any = { title, body, user: { connect: userEmail ? { email:userEmail } : { id:userId! } } };
-        const forumTable = await detectForumTable();
-        if (forumTable){
-          // connect by title/name = "General" if exists
-          const byTitle = await (prisma as any)[forumTable.toLowerCase()].findFirst({ where:{ title:"General" } }).catch(()=>null);
-          const byName  = byTitle || await (prisma as any)[forumTable.toLowerCase()].findFirst({ where:{ name:"General" } }).catch(()=>null);
-          if (byName?.title) data[forumTable.toLowerCase()] = { connect:{ title:"General" } };
-          else if (byName?.name) data[forumTable.toLowerCase()] = { connect:{ name:"General" } };
-        }
-        const created = await prisma.post.create({ data });
-        return res.status(201).json(created);
-      }catch(_e){ /* fall through to raw */ }
+      // ----- normalize images -----
+      const normalizedImages: string[] = Array.isArray(imageUrls)
+        ? imageUrls.filter((u) => !!u && typeof u === "string")
+        : [];
 
-      // fallback raw with explicit id
-      const forumTable = await detectForumTable();
-      let forumId:string|null = null;
-      if (forumTable){
-        try{
-          const r = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ${forumTable} WHERE name='General' OR title='General' ORDER BY rowid DESC LIMIT 1`);
-          forumId = r?.[0]?.id ?? null;
-        }catch{}
+      if (!normalizedImages.length && typeof imageUrl === "string" && imageUrl) {
+        normalizedImages.push(imageUrl);
       }
-      const row = await insertPostRaw({ title, body, userId: userId ?? undefined, forumId });
-      return res.status(201).json(row);
+
+      const mainMediaUrl =
+        (typeof mediaUrl === "string" && mediaUrl) ||
+        (typeof imageUrl === "string" && imageUrl) ||
+        (normalizedImages[0] ?? null);
+
+      const createData: any = {
+        title: cleanTitle,
+        body: textBody,
+        mediaUrl: mainMediaUrl,
+        imageUrls: normalizedImages,
+        user: {
+          connect: {
+            email: session.user.email!,
+          },
+        },
+        // IMPORTANT: subforum is REQUIRED by Prisma, so always provide it
+        subforum: {
+          connectOrCreate: {
+            where: {
+              // assumes `name` is unique on Subforum
+              name: loopName,
+            },
+            create: {
+              name: loopName,
+              title: loopName, // <-- REQUIRED FIELD FIX
+              description:
+                loopName === "general"
+                  ? "Default Whistle loop"
+                  : `Loop: ${loopName}`,
+            },
+          },
+        },
+      };
+
+      const post = await prisma.post.create({
+        data: createData,
+        include: { user: true },
+      });
+
+      return res.status(201).json(post);
+    } catch (error: any) {
+      console.error("POST /api/posts error", error);
+      return res.status(500).json({ error: "Failed to create post" });
     }
-
-    res.setHeader("Allow","GET, POST");
-    return res.status(405).json({ error:"Method Not Allowed" });
-  }catch(e:any){
-    console.error(e); return res.status(500).json({ error: e?.message || "Internal Server Error" });
   }
+
+  // =============== GET: single post or feed ===============
+  if (req.method === "GET") {
+    try {
+      const { id, limit, sort } = req.query;
+
+      // ----- single post by id -----
+      if (typeof id === "string" && id.length > 0) {
+        const post = await prisma.post.findUnique({
+          where: { id },
+          include: { user: true },
+        });
+
+        if (!post) {
+          return res.status(404).json({ error: "Post not found" });
+        }
+
+        return res.status(200).json(post);
+      }
+
+      // ----- feed listing -----
+      const take =
+        typeof limit === "string" && !Number.isNaN(Number(limit))
+          ? Math.min(parseInt(limit, 10), 50)
+          : 20;
+
+      const orderBy =
+        sort === "old"
+          ? { createdAt: "asc" as const }
+          : { createdAt: "desc" as const };
+
+      const posts = await prisma.post.findMany({
+        take,
+        orderBy,
+        include: { user: true },
+      });
+
+      return res.status(200).json(posts);
+    } catch (error: any) {
+      console.error("GET /api/posts error", error);
+      return res.status(500).json({ error: "Failed to fetch posts" });
+    }
+  }
+
+  res.setHeader("Allow", "GET,POST");
+  return res.status(405).json({ error: "Method not allowed" });
 }

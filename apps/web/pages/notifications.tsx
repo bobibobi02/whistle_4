@@ -1,4 +1,4 @@
-// pages/notifications.tsx
+﻿// pages/notifications.tsx
 import Head from "next/head";
 import Link from "next/link";
 import { GetServerSideProps } from "next";
@@ -40,7 +40,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
     // The @ts-ignore suppresses the type error when the model doesn't exist in generated types.
     // @ts-ignore
     const rows = await prisma.notification.findMany({
-      // Adjust to your schema — this assumes a user relation by email
+      // Adjust to your schema  this assumes a user relation by email
       where: { user: { email } },
       orderBy: { createdAt: "desc" },
       include: { post: true }, // remove if your model doesn't have this relation
@@ -68,7 +68,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       data: { read: true },
     });
   } catch {
-    // No Notification model in schema (or shape differs) — continue with empty list
+    // No Notification model in schema (or shape differs)  continue with empty list
     notifications = [];
   }
 
@@ -107,7 +107,7 @@ export default function Notifications({ notifications, userEmail }: PageProps) {
   return (
     <>
       <Head>
-        <title>Notifications — Whistle</title>
+        <title>Notifications  Whistle</title>
       </Head>
 
       <main className="container max-w-2xl mx-auto py-6">
@@ -150,3 +150,4 @@ export default function Notifications({ notifications, userEmail }: PageProps) {
     </>
   );
 }
+

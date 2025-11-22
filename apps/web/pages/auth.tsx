@@ -1,4 +1,4 @@
-// apps/web/pages/auth.tsx
+﻿// apps/web/pages/auth.tsx
 'use client';
 
 import Head from 'next/head';
@@ -128,7 +128,7 @@ export default function AuthPage() {
         return;
       }
 
-      const msg = r?.error || 'Account created, but auto sign-in failed — please sign in.';
+      const msg = r?.error || 'Account created, but auto sign-in failed  please sign in.';
       setUpState({ loading: false, error: msg });
       setTab('login');
       history.replaceState(null, '', '#login');
@@ -139,7 +139,7 @@ export default function AuthPage() {
 
   return (
     <>
-      <Head><title>Whistle — Login / Sign up</title></Head>
+      <Head><title>Whistle  Login / Sign up</title></Head>
 
       <main className="feed-wrap" style={{ maxWidth: 560 }}>
         <h1 style={{ fontWeight: 900, margin: '16px 0 6px' }}>Welcome to Whistle</h1>
@@ -236,7 +236,7 @@ export default function AuthPage() {
                   disabled={loginState.loading}
                   style={{ width: '100%', marginTop: 6 }}
                 >
-                  {loginState.loading ? 'Signing in…' : 'Sign in'}
+                  {loginState.loading ? 'Signing in' : 'Sign in'}
                 </button>
 
                 <p className="small-muted" style={{ textAlign: 'center', marginTop: 8 }}>
@@ -311,7 +311,7 @@ export default function AuthPage() {
                   disabled={upState.loading}
                   style={{ width: '100%', marginTop: 6 }}
                 >
-                  {upState.loading ? 'Creating…' : 'Sign up'}
+                  {upState.loading ? 'Creating' : 'Sign up'}
                 </button>
 
                 <p className="small-muted" style={{ textAlign: 'center', marginTop: 8 }}>
@@ -332,3 +332,4 @@ export default function AuthPage() {
     </>
   );
 }
+

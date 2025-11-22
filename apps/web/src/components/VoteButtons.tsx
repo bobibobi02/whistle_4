@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 type Props = {
   postId: string;
@@ -24,9 +24,10 @@ export function VoteButtons({ postId, initialVotes }: Props) {
 
   return (
     <div className="flex flex-col items-center mr-4 text-gray-600">
-      <button onClick={() => vote(1)} className="hover:text-green-600">⬆️</button>
+      <button onClick={() => vote(1)} className="hover:text-green-600"> </button>
       <span>{votes}</span>
-      <button onClick={() => vote(-1)} className="hover:text-red-600">⬇️</button>
+      <button onClick={() => vote(-1)} className="hover:text-red-600"></button>
     </div>
   );
 }
+

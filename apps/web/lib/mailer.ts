@@ -1,4 +1,4 @@
-// lib/mailer.ts
+﻿// lib/mailer.ts
 import nodemailer from "nodemailer";
 
 type SendOpts = {
@@ -21,7 +21,7 @@ async function sendWithResend(opts: SendOpts) {
 
   const resend = new Resend(apiKey);
 
-  // Prefer opts.from → EMAIL_FROM → fallback to Resend's default sender (good for quick tests)
+  // Prefer opts.from Р  Р’ Р ™Р’ Р  Р’ Р Р†Р љР’ Р  Р’ Р  РІ Р  Р’ Р Р†Р љРЎв„ўР  РІв„ўР ™Р’ Р  Р’ Р  РІ Р  Р’ Р Р†Р љРЎв„ўР  Р  Р Р†Р љРЎєР РЋРЎє EMAIL_FROM Р  Р’ Р ™Р’ Р  Р’ Р Р†Р љР’ Р  Р’ Р  РІ Р  Р’ Р Р†Р љРЎв„ўР  РІв„ўР ™Р’ Р  Р’ Р  РІ Р  Р’ Р Р†Р љРЎв„ўР  Р  Р Р†Р љРЎєР РЋРЎє fallback to Resend's default sender (good for quick tests)
   const fromEnv = process.env.EMAIL_FROM;
   const from = opts.from || fromEnv || "onboarding@resend.dev";
 

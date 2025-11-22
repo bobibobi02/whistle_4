@@ -1,4 +1,4 @@
-// pages/api/dev/send-test.ts
+﻿// pages/api/dev/send-test.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sendMail } from "../../../lib/mailer";
 

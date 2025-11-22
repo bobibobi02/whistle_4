@@ -1,4 +1,4 @@
-/* apps/web/pages/api/home/popular.ts
+﻿/* apps/web/pages/api/home/popular.ts
  *
  * Returns a "popular posts" feed for a given time window.
  * Score heuristic: score = votes*2 + comments
@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const windowMs = parseWindow(req.query.window);
   const windowDate = new Date(Date.now() - windowMs);
 
-  const where: Prisma.PostWhereInput = {
+  const where = {
     createdAt: { gte: windowDate },
   };
 
@@ -88,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         votes: true,
       },
     },
-  } satisfies Prisma.PostSelect;
+  } as const;
 
   // Try with imageUrls selected. If column doesn't exist, retry without it.
   let rows: Array<{
@@ -183,3 +183,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     posts: data,
   });
 }
+
+

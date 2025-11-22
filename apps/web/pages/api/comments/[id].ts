@@ -11,10 +11,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     const comment = await prisma.comment.findUnique({
       where: { id },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        votes: true,
-      },
+      include: { user: { select: { id: true, name: true, email: true  } },
+        },
     });
     if (!comment) return res.status(404).json({ ok: false, error: 'Not found' });
     return res.status(200).json({ ok: true, comment });

@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+﻿import { useRouter } from 'next/router';
 import useSWR from 'swr';
 import Link from 'next/link';
 import Head from 'next/head';
@@ -16,11 +16,11 @@ export default function SearchPage() {
 
   return (
     <>
-      <Head><title>Search – Whistle</title></Head>
+      <Head><title>Search  Whistle</title></Head>
       <div className="container">
-        <h1 className="heading">Search Results for “{q}”</h1>
+        <h1 className="heading">Search Results for {q}</h1>
 
-        {isLoading && <p>Loading…</p>}
+        {isLoading && <p>Loading</p>}
         {error && <p className="error">Failed to load results</p>}
 
         {!isLoading && data && (
@@ -124,3 +124,4 @@ export default function SearchPage() {
     </>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useDialog } from '@/components/ui/DialogProvider';
 
 export function useConfirm() {

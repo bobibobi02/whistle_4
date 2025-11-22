@@ -1,0 +1,7 @@
+{
+  "extends": "next",
+  "rules": {
+    "no-empty": "off",
+    "eslint-comments/no-unused-disable": "off"
+  }
+}

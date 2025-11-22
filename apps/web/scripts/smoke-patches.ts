@@ -1,4 +1,4 @@
-// apps/web/scripts/smoke-patches.ts
+﻿// apps/web/scripts/smoke-patches.ts
 //
 // Purpose: prove that our client JSON helpers don't blow up on empty API bodies.
 // Run:  npx tsx scripts/smoke-patches.ts
@@ -8,9 +8,9 @@ import { postJSON } from '../lib/fetchJson';
 async function assert(name: string, fn: () => Promise<any>) {
   try {
     await fn();
-    console.log(`✅ ${name}`);
+    console.log(`РІСљ¦ ${name}`);
   } catch (e: any) {
-    console.error(`❌ ${name}`);
+    console.error(`РІСњРЉ ${name}`);
     console.error(e?.stack || e?.message || e);
     process.exitCode = 1;
   }

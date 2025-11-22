@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
 
         {done ? (
           <div style={{ color: '#c6f6d5', background: 'rgba(16,185,129,.15)', border: '1px solid rgba(16,185,129,.35)', borderRadius: 12, padding: '8px 10px' }}>
-            Password updated — redirecting to sign in…
+            Password updated  redirecting to sign in
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
             )}
 
             <button type="submit" className="btn-solid" disabled={busy || !password || !confirm} style={{ opacity: busy || !password || !confirm ? 0.7 : 1 }}>
-              {busy ? 'Saving…' : 'Save new password'}
+              {busy ? 'Saving' : 'Save new password'}
             </button>
           </div>
         )}
@@ -107,3 +107,4 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
+

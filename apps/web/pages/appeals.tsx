@@ -1,4 +1,4 @@
-// pages/appeals.tsx
+﻿// pages/appeals.tsx
 import Head from 'next/head';
 import AppealForm from '@/components/AppealForm';
 import ModActionReviewer from '@/components/ModActionReviewer';
@@ -29,7 +29,7 @@ export default function AppealsPage() {
 
   return (
     <>
-      <Head><title>Appeals – Whistle</title></Head>
+      <Head><title>Appeals  Whistle</title></Head>
       <div className="container">
         <AppealForm />
         <ModActionReviewer />
@@ -44,3 +44,4 @@ export default function AppealsPage() {
     </>
   );
 }
+

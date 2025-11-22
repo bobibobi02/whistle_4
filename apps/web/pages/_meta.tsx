@@ -1,10 +1,10 @@
-// apps/web/pages/_meta.tsx
+﻿// apps/web/pages/_meta.tsx
 // Small helper you can include inside <Head> to keep meta tags consistent.
 export default function MetaTags() {
   return (
     <>
       {/* Open Graph */}
-      <meta property="og:title" content="Whistle – A Community Platform" />
+      <meta property="og:title" content="Whistle  A Community Platform" />
       <meta
         property="og:description"
         content="Post, comment, vote, and join communities on Whistle."
@@ -14,7 +14,7 @@ export default function MetaTags() {
 
       {/* Twitter (fixed: use 'name', not a non-existent 'subforum' prop) */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Whistle – A Community Platform" />
+      <meta name="twitter:title" content="Whistle  A Community Platform" />
       <meta
         name="twitter:description"
         content="Post, comment, vote, and join communities on Whistle."
@@ -23,3 +23,4 @@ export default function MetaTags() {
     </>
   );
 }
+

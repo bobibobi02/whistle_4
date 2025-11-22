@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 export default function PluginControls({ pluginKey, initialConfig }) {
   const [config, setConfig] = useState(JSON.stringify(initialConfig || {}, null, 2));

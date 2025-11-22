@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState } from 'react';
 
 export default function ToxicityFlagger({ content }: { content: string }) {
@@ -24,11 +24,12 @@ export default function ToxicityFlagger({ content }: { content: string }) {
           <p>Toxicity Score: {result.toxicityScore.toFixed(2)}</p>
           <p>
             {result.flagged
-              ? '🚩 This content is potentially toxic.'
-              : '✅ Content appears safe.'}
+              ? ' This content is potentially toxic.'
+              : ' Content appears safe.'}
           </p>
         </div>
       )}
     </div>
   );
 }
+

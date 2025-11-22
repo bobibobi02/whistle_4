@@ -1,4 +1,4 @@
-export default function UserBadge({ badge, flair }) {
+﻿export default function UserBadge({ badge, flair }) {
   if (!badge && !flair) return null;
 
   return (

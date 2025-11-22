@@ -1,4 +1,4 @@
-// apps/web/pages/500.tsx
+﻿// apps/web/pages/500.tsx
 import Link from "next/link";
 
 export default function ServerError() {

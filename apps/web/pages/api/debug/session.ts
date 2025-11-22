@@ -1,4 +1,4 @@
-// apps/web/pages/api/debug/session.ts
+﻿// apps/web/pages/api/debug/session.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { getToken } from "next-auth/jwt";

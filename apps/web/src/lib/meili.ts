@@ -1,4 +1,4 @@
-import { MeiliSearch } from 'meilisearch';
+﻿import { MeiliSearch } from 'meilisearch';
 
 export const meili = new MeiliSearch({
   host: process.env.MEILI_HOST || 'http://127.0.0.1:7700',

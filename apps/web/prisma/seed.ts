@@ -1,4 +1,4 @@
-// prisma/seed.ts
+﻿// prisma/seed.ts
 /* Seed your dev DB with demo subforums, posts, votes, and comments.
    Run:  npx tsx prisma/seed.ts
    or :  npx ts-node prisma/seed.ts
@@ -14,7 +14,7 @@ const LIPSUM  = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Intege
 const ago = (ms: number) => new Date(Date.now() - ms);
 
 async function main() {
-  console.log('🌱 Seeding dev database…');
+  console.log('СЂСџРЉВ± Seeding dev databaseРІВ¦');
 
   for (const name of SUBS) {
     await prisma.subforum.upsert({
@@ -42,7 +42,7 @@ async function main() {
     });
     posts.push(post);
   }
-  console.log(`📝 Created ${posts.length} posts.`);
+  console.log(`СЂСџњСњ Created ${posts.length} posts.`);
 
   let voteCount = 0;
   for (const post of posts) {
@@ -58,7 +58,7 @@ async function main() {
       voteCount++;
     }
   }
-  console.log(`❤️ Cast ${voteCount} votes.`);
+  console.log(`РІСњВ¤РїС‘РЏ Cast ${voteCount} votes.`);
 
   let commentCount = 0;
   for (let i = 0; i < Math.min(posts.length, 8); i++) {
@@ -84,9 +84,9 @@ async function main() {
     });
     commentCount++;
   }
-  console.log(`💬 Created ${commentCount} comments.`);
+  console.log(`СЂСџ™В¬ Created ${commentCount} comments.`);
 
-  console.log('✅ Seed complete.');
+  console.log('РІСљ¦ Seed complete.');
 }
 
 main()

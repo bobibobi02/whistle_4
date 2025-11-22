@@ -1,4 +1,4 @@
-// pages/api/auth/reset/send-reset.ts
+﻿// pages/api/auth/reset/send-reset.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
@@ -29,7 +29,7 @@ async function sendPasswordResetMail(to: string, link: string) {
                 Reset Password
               </a>
             </p>
-            <p>If the button doesn’t work, paste this link into your browser:</p>
+            <p>If the button doesnt work, paste this link into your browser:</p>
             <p><a href="${link}">${link}</a></p>
           </div>
         `,
@@ -68,7 +68,7 @@ async function sendPasswordResetMail(to: string, link: string) {
             Reset Password
           </a>
         </p>
-        <p>If the button doesn’t work, paste this link into your browser:</p>
+        <p>If the button doesnt work, paste this link into your browser:</p>
         <p><a href="${link}">${link}</a></p>
       </div>
     `,
@@ -120,3 +120,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(200).json({ ok: true });
   }
 }
+

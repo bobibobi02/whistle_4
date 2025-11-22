@@ -1,4 +1,4 @@
-// src/components/AnalyticsDashboard.tsx
+﻿// src/components/AnalyticsDashboard.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -62,7 +62,7 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p>Loading</p>;
 
   const postsCount = data.postsCount ?? 0;
   const commentsCount = data.commentsCount ?? 0;
@@ -133,3 +133,4 @@ export default function AnalyticsDashboard() {
     </div>
   );
 }
+

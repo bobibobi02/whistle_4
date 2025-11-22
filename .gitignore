@@ -24,3 +24,8 @@ apps/web/public/uploads/
 .DS_Store
 Thumbs.db
 .vscode/
+# TypeScript build info
+*.tsbuildinfo
+
+# Test artifacts
+test-results/

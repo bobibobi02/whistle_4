@@ -1,4 +1,4 @@
-// src/lib/webrtc/peer.ts
+﻿// src/lib/webrtc/peer.ts
 
 /**
  * Create a SimplePeer instance in the browser.

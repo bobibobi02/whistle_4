@@ -1,4 +1,4 @@
-// src/components/MeiliInitializer.tsx
+﻿// src/components/MeiliInitializer.tsx
 import { useEffect } from "react";
 
 type Post = {

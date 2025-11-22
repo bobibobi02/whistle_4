@@ -1,4 +1,4 @@
-// pages/moderator.tsx
+﻿// pages/moderator.tsx
 import Head from "next/head";
 import Link from "next/link";
 import { GetServerSideProps } from "next";
@@ -33,7 +33,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   try {
     const res = await prisma.subforum.findMany({
       where: {
-        // @ts-ignore — optional relation depending on your schema
+        // @ts-ignore  optional relation depending on your schema
         moderators: {
           some: {
             email: email,
@@ -63,7 +63,7 @@ export default function ModeratorPage({ modSubforums, userEmail }: PageProps) {
   return (
     <>
       <Head>
-        <title>Moderator Tools — Whistle</title>
+        <title>Moderator Tools  Whistle</title>
       </Head>
 
       <main className="container max-w-3xl mx-auto py-6">
@@ -74,7 +74,7 @@ export default function ModeratorPage({ modSubforums, userEmail }: PageProps) {
 
         {!modSubforums?.length ? (
           <div className="rounded border p-4 bg-white">
-            <p className="mb-2">You’re not listed as a moderator of any subforums yet.</p>
+            <p className="mb-2">Youre not listed as a moderator of any subforums yet.</p>
             <p className="text-sm text-gray-600">
               If you believe this is a mistake, please contact an admin.
             </p>
@@ -102,3 +102,4 @@ export default function ModeratorPage({ modSubforums, userEmail }: PageProps) {
     </>
   );
 }
+

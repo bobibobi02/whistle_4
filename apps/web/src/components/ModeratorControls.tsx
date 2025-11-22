@@ -1,4 +1,4 @@
-// components/ModeratorControls.tsx
+﻿// components/ModeratorControls.tsx
 
 import { useSession } from "next-auth/react";
 
@@ -42,7 +42,7 @@ export default function ModeratorControls({
 
   return (
     <div className="relative inline-block text-left">
-      <button className="px-2 py-1 rounded hover:bg-gray-200">•••</button>
+      <button className="px-2 py-1 rounded hover:bg-gray-200"></button>
       <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded z-10">
         {postId && (
           <button
@@ -72,3 +72,4 @@ export default function ModeratorControls({
     </div>
   );
 }
+

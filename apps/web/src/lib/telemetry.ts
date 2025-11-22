@@ -1,4 +1,4 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
+﻿import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
@@ -14,7 +14,7 @@ const sdk = new NodeSDK({
 });
 
 sdk.start()
-  .then(() => console.log('🚀 OpenTelemetry initialized'))
+  .then(() => console.log(' OpenTelemetry initialized'))
   .catch(console.error);
 
 process.on('SIGTERM', () => {
@@ -23,3 +23,4 @@ process.on('SIGTERM', () => {
     .catch(console.error)
     .finally(() => process.exit(0));
 });
+

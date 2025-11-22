@@ -1,4 +1,4 @@
-import * as nacl from 'tweetnacl';
+﻿import * as nacl from 'tweetnacl';
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
 
 // Generate a new keypair

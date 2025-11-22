@@ -1,4 +1,4 @@
-// src/components/Comment.tsx
+﻿// src/components/Comment.tsx
 import { useState } from 'react';
 
 type CommentModel = {
@@ -86,7 +86,7 @@ export default function Comment({ comment, userId, postId }: { comment: CommentM
               onClick={saveEdit}
               className="mr-2 bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-60"
             >
-              {busy === 'save' ? 'Saving…' : 'Save'}
+              {busy === 'save' ? 'Saving' : 'Save'}
             </button>
             <button
               onClick={() => setIsEditing(false)}
@@ -116,7 +116,7 @@ export default function Comment({ comment, userId, postId }: { comment: CommentM
                   onClick={deleteComment}
                   className="text-red-600 hover:underline disabled:opacity-60"
                 >
-                  {busy === 'delete' ? 'Deleting…' : 'Delete'}
+                  {busy === 'delete' ? 'Deleting' : 'Delete'}
                 </button>
               </>
             )}
@@ -130,7 +130,7 @@ export default function Comment({ comment, userId, postId }: { comment: CommentM
             value={replyContent}
             onChange={(e) => setReplyContent(e.target.value)}
             className="w-full border rounded p-2"
-            placeholder="Write your reply…"
+            placeholder="Write your reply"
             rows={3}
           />
           <button
@@ -138,10 +138,11 @@ export default function Comment({ comment, userId, postId }: { comment: CommentM
             onClick={handleReplySubmit}
             className="mt-2 px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-60"
           >
-            {busy === 'reply' ? 'Posting…' : 'Post Reply'}
+            {busy === 'reply' ? 'Posting' : 'Post Reply'}
           </button>
         </div>
       )}
     </div>
   );
 }
+

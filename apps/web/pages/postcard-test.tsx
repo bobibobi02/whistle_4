@@ -1,4 +1,4 @@
-// pages/postcard-test.tsx
+﻿// pages/postcard-test.tsx
 import Head from "next/head";
 import PostCard from "@/components/post-card/PostCard";
 
@@ -25,7 +25,7 @@ export default function PostCardTest() {
   return (
     <>
       <Head>
-        <title>PostCard Demo — Whistle</title>
+        <title>PostCard Demo  Whistle</title>
       </Head>
       <main className="container max-w-2xl mx-auto py-6">
         <h1 className="text-2xl font-semibold mb-4">PostCard Demo</h1>
@@ -36,3 +36,4 @@ export default function PostCardTest() {
     </>
   );
 }
+

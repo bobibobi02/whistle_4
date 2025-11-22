@@ -1,4 +1,4 @@
-// apps/web/pages/_app.tsx
+﻿// apps/web/pages/_app.tsx
 import type { AppProps } from 'next/app';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import Head from 'next/head';
@@ -154,7 +154,7 @@ function Navbar() {
             </Link>
             {status === 'loading' ? (
               <span className="link" aria-hidden style={{ opacity: 0.5 }}>
-                …
+                
               </span>
             ) : status === 'authenticated' ? (
               <>
@@ -177,7 +177,7 @@ function Navbar() {
             )}
           </nav>
           <button type="button" className="theme-toggle" onClick={toggleTheme}>
-            {theme === 'dark' ? <span>🌙 Dark</span> : <span>🌞 Light</span>}
+            {theme === 'dark' ? <span> Dark</span> : <span> Light</span>}
           </button>
         </div>
       </div>
@@ -203,3 +203,4 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     </SessionProvider>
   );
 }
+

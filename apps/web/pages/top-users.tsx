@@ -1,4 +1,4 @@
-// pages/top-users.tsx
+﻿// pages/top-users.tsx
 import Head from "next/head";
 import { PrismaClient } from "@prisma/client";
 
@@ -22,7 +22,7 @@ export async function getServerSideProps() {
       email: true,
       _count: {
         select: {
-          posts: true,     // if your schema doesn’t have posts relation, this will be 0
+          posts: true,     // if your schema doesnt have posts relation, this will be 0
           comments: true,  // if missing, also 0
         },
       },
@@ -54,7 +54,7 @@ export default function TopUsers({ leaders }: { leaders: LeaderUser[] }) {
   return (
     <>
       <Head>
-        <title>Top Users — Whistle</title>
+        <title>Top Users  Whistle</title>
       </Head>
       <main className="container max-w-2xl mx-auto py-6">
         <h1 className="text-2xl font-semibold mb-4">Top Users</h1>
@@ -69,7 +69,7 @@ export default function TopUsers({ leaders }: { leaders: LeaderUser[] }) {
                     #{i + 1} {u.name || u.email?.split("@")[0] || "User"}
                   </div>
                   <div className="text-xs text-gray-600">
-                    Posts: {u.postsCount} · Comments: {u.commentsCount}
+                    Posts: {u.postsCount}  Comments: {u.commentsCount}
                   </div>
                 </div>
                 <div className="text-sm font-semibold">Score: {u.score}</div>
@@ -81,3 +81,4 @@ export default function TopUsers({ leaders }: { leaders: LeaderUser[] }) {
     </>
   );
 }
+

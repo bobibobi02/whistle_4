@@ -1,4 +1,4 @@
-// src/lib/isModerator.ts
+﻿// src/lib/isModerator.ts
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 

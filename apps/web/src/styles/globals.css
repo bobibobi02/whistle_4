@@ -1,4 +1,4 @@
-/* src/styles/globals.css */
+﻿/* src/styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -112,3 +112,4 @@ a {
   justify-content: center !important;
   gap: 1rem !important;
 }
+

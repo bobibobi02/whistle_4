@@ -1,4 +1,4 @@
-/* apps/web/styles/globals.css */
+﻿/* apps/web/styles/globals.css */
 
 /* 1) Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&display=swap');
@@ -106,7 +106,7 @@ html[data-theme="dark"] *, html[data-theme="light"] * {
 .theme-toggle:focus-visible{ outline:2px solid #0E5132; outline-offset:2px; }
 .theme-toggle .icon{ display:inline-grid; place-items:center; width:1.1rem; height:1.1rem; }
 
-/* Generic “link button” style used in feed delete, etc. */
+/* Generic њlink buttonќ style used in feed delete, etc. */
 .link {
   background: transparent; border: 0; color: inherit; cursor: pointer;
   padding: 0; font: inherit; text-decoration: none;
@@ -270,7 +270,7 @@ input[type="file"]:not(.show-native){
 }
 
 /* ------------------------------------------------------------------
-   MEDIA CONTAINMENT — view & feed
+   MEDIA CONTAINMENT ” view & feed
 ------------------------------------------------------------------ */
 .post-media{
   background:var(--surface); border:1px solid var(--border); border-radius:16px;
@@ -374,7 +374,7 @@ html[data-theme="dark"] .chip[aria-pressed="true"]{
    PROFILE TABS BAR  (NON-STICKY BY DEFAULT)
 ------------------------------------------------------------------ */
 .profile-tabs{
-  /* no sticky — it will scroll with the page */
+  /* no sticky ” it will scroll with the page */
   position: relative;
   top: auto;
   z-index: auto;
@@ -453,3 +453,4 @@ html[data-theme="dark"] .chip[aria-pressed="true"]{
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
+

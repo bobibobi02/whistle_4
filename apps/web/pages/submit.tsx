@@ -1,4 +1,4 @@
-// pages/submit.tsx
+﻿// pages/submit.tsx
 // Reuse the exact same UI from /create-subforum but keep the auth gate here.
 
 import type { GetServerSideProps } from "next";

@@ -1,4 +1,4 @@
-// src/components/DarkModeProvider.tsx
+﻿// src/components/DarkModeProvider.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Mode = "light" | "dark";

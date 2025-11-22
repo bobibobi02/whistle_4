@@ -1,4 +1,4 @@
-// apps/web/pages/signup.tsx
+﻿// apps/web/pages/signup.tsx
 'use client';
 
 import Head from 'next/head';
@@ -59,7 +59,7 @@ export default function SignUpPage() {
 
   return (
     <>
-      <Head><title>Whistle — Sign up</title></Head>
+      <Head><title>Whistle  Sign up</title></Head>
       <main className="feed-wrap" style={{ maxWidth: 520 }}>
         <h1 style={{ fontWeight: 900, margin: '16px 0 10px' }}>Create your account</h1>
         <p style={{ color: '#64748b', marginTop: 0 }}>
@@ -126,7 +126,7 @@ export default function SignUpPage() {
             style={{ width: '100%', marginTop: 14 }}
             title="Create account"
           >
-            {state.loading ? 'Creating…' : 'Sign up'}
+            {state.loading ? 'Creating' : 'Sign up'}
           </button>
 
           <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>
@@ -137,3 +137,5 @@ export default function SignUpPage() {
     </>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from 'react';
+﻿import React, { PropsWithChildren } from 'react';
 
 export function Card({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
   return <div className={`bg-white shadow-sm rounded-2xl ${className}`}>{children}</div>;

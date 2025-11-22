@@ -1,90 +1,58 @@
-// pages/api/saved.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from './auth/[...nextauth]';
-import { PrismaClient } from '@prisma/client';
+﻿import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "./auth/[...nextauth]";
+import { PrismaClient } from "@prisma/client";
 
-const prisma = (global as any).prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') (global as any).prisma = prisma;
+const prisma = new PrismaClient();
 
-/**
- * GET  /api/saved
- *   - ?postId=<id>      -> { saved: boolean }
- *   - (no postId)       -> { ids: string[], nextCursor?: string }
- *
- * POST /api/saved
- *   body: { postId: string, action: 'save'|'unsave'|'toggle' }
- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getServerSession(req, res, authOptions);
-  const userEmail = session?.user?.email || null;
-  if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const session = await getServerSession(req, res, authOptions);
+    const userEmail = (session?.user as any)?.email || null;
+    if (!userEmail) return res.status(401).json({ error: "Not authenticated" });
 
-  if (req.method === 'GET') {
-    const { postId, limit = '50', cursor } = req.query as { postId?: string; limit?: string; cursor?: string };
-
-    // single post status
-    if (postId) {
-      const exists = await prisma.saved.findUnique({
-        where: { Saved_userEmail_postId: { userEmail, postId } },
-        select: { id: true },
-      });
-      return res.json({ saved: !!exists });
-    }
-
-    // list ids for this user
-    const take = Math.min(Math.max(parseInt(limit || '50', 10), 1), 200);
-    const rows = await prisma.saved.findMany({
-      where: { userEmail },
-      orderBy: { createdAt: 'desc' },
-      take: take + 1,
-      ...(cursor ? { cursor: { id: String(cursor) }, skip: 1 } : {}),
-      select: { id: true, postId: true },
-    });
-
-    const hasMore = rows.length > take;
-    const items = hasMore ? rows.slice(0, take) : rows;
-    const nextCursor = hasMore ? items[items.length - 1].id : null;
-
-    return res.json({ ids: items.map(r => r.postId), nextCursor });
-  }
-
-  if (req.method === 'POST') {
-    const { postId, action } = (req.body ?? {}) as { postId?: string; action?: 'save' | 'unsave' | 'toggle' };
-    if (!postId) return res.status(400).json({ error: 'postId required' });
-
-    try {
-      if (action === 'save' || action === 'toggle') {
-        await prisma.saved.upsert({
-          where: { Saved_userEmail_postId: { userEmail, postId } },
-          update: {},
-          create: { userEmail, postId },
+    if (req.method === "GET") {
+      const postId = String(req.query.postId || "");
+      if (postId) {
+        //  your unique is userEmail_postId (not Saved_userEmail_postId)
+        const exists = await prisma.saved.findUnique({
+          where: { userEmail_postId: { userEmail, postId } },
+          select: { id: true },
         });
-        return res.json({ ok: true, saved: true });
+        return res.status(200).json({ saved: !!exists });
       }
+      // list all saved post ids for this user
+      const rows = await prisma.saved.findMany({
+        where: { userEmail },
+        select: { postId: true },
+      });
+      return res.status(200).json({ savedPostIds: rows.map(r => r.postId) });
+    }
 
-      if (action === 'unsave') {
-        await prisma.saved.deleteMany({ where: { userEmail, postId } });
-        return res.json({ ok: true, saved: false });
-      }
+    if (req.method === "POST") {
+      const { postId } = req.body as { postId?: string };
+      if (!postId) return res.status(400).json({ error: "postId required" });
 
-      // default/fallback toggle
       const exists = await prisma.saved.findUnique({
-        where: { Saved_userEmail_postId: { userEmail, postId } },
+        where: { userEmail_postId: { userEmail, postId } },
         select: { id: true },
       });
-      if (exists) {
-        await prisma.saved.delete({ where: { id: exists.id } });
-        return res.json({ ok: true, saved: false });
-      } else {
-        await prisma.saved.create({ data: { userEmail, postId } });
-        return res.json({ ok: true, saved: true });
-      }
-    } catch (e) {
-      console.error('saved.ts POST error', e);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+      if (exists) {
+        await prisma.saved.delete({ where: { userEmail_postId: { userEmail, postId } } });
+        return res.status(200).json({ saved: false });
+      }
+
+      // Create using your columns; Prisma will set FKs to User/Post by fields
+      await prisma.saved.create({ data: { userEmail, postId } });
+      return res.status(201).json({ saved: true });
+    }
+
+    res.setHeader("Allow", "GET, POST");
+    return res.status(405).json({ error: "Method Not Allowed" });
+  } catch (e: any) {
+    console.error("saved API error:", e);
+    return res.status(500).json({ error: e?.message || "Internal Server Error" });
+  }
 }
+

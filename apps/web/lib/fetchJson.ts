@@ -1,4 +1,4 @@
-// apps/web/lib/fetchJson.ts
+﻿// apps/web/lib/fetchJson.ts
 
 /**
  * Safe JSON helpers for our API calls.

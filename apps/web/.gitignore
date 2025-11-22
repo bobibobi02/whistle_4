@@ -1,0 +1,13 @@
+.vercel
+
+# --- Whistle local/backup artifacts ---
+*.bak
+*.bak-*
+*.backup
+*.backup-*
+dburl.txt
+package.json.bak*
+prisma/*.bak*
+**/*.bak_mojifix*
+**/*.bak_fix*
+

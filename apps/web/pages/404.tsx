@@ -1,4 +1,4 @@
-// apps/web/pages/404.tsx
+﻿// apps/web/pages/404.tsx
 import Link from "next/link";
 
 export default function NotFound() {
@@ -17,7 +17,7 @@ export default function NotFound() {
       >
         <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.2, color: "#E6EEF2" }}>Page not found</h1>
         <p style={{ marginTop: 8, color: "#9FB2BA" }}>
-          The page you’re looking for doesn’t exist or was moved.
+          The page youre looking for doesnt exist or was moved.
         </p>
         <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
           <Link href="/" className="btn-solid">
@@ -31,3 +31,4 @@ export default function NotFound() {
     </main>
   );
 }
+

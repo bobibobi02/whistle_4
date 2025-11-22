@@ -1,4 +1,4 @@
-import { prisma } from '../prisma'; // adjust import path as needed
+﻿import { prisma } from '../prisma'; // adjust import path as needed
 
 export const resolvers = {
   Query: {

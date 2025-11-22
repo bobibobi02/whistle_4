@@ -1,4 +1,4 @@
-// src/lib/analytics/index.ts
+﻿// src/lib/analytics/index.ts
 
 /**
  * Client-side analytics tracker helper.

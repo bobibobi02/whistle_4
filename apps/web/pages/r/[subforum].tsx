@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { VoteButtons } from '@/components/VoteButtons';
-import SaveButton from '@/components/SaveButton'; // ✅ FIXED
+import SaveButton from '@/components/SaveButton'; //  FIXED
 import { prisma } from '@/lib/prisma';
 
 type PostWithExtras = {
@@ -14,7 +14,7 @@ type PostWithExtras = {
   voteCount: number;
   commentCount: number;
   userEmail: string;
-  subforumName: string;
+  subforumName?: string | null;
 };
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
@@ -23,20 +23,20 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   if (!subforumName) return { notFound: true };
 
   const postsRaw = await prisma.post.findMany({
-    where: { subforumName },
-    include: { user: true, votes: true, comments: true },
+    where: { subforum: { name: subforumName } },
+    include: { user: true, votes: true, comments: true, subforum: true },
     orderBy: { createdAt: 'desc' },
   });
 
   const posts: PostWithExtras[] = postsRaw.map((p) => ({
     id: p.id,
     title: p.title,
-    content: p.content,
+    content: (p.content ?? ''),
     createdAt: p.createdAt.toISOString(),
     voteCount: p.votes.reduce((s, v) => s + v.value, 0),
     commentCount: p.comments.length,
     userEmail: p.user.email,
-    subforumName: p.subforumName,
+    subforumName: (p.subforum?.name ?? null),
   }));
 
   return { props: { subforumName, posts } };
@@ -46,13 +46,13 @@ export default function SubforumPage({
   subforumName,
   posts,
 }: {
-  subforumName: string;
+  subforumName?: string | null;
   posts: PostWithExtras[];
 }) {
   return (
     <>
       <Head>
-        <title>Whistle — r/{subforumName}</title>
+        <title>Whistle  r/{subforumName}</title>
       </Head>
       <div className="container">
         <h1>r/{subforumName}</h1>
@@ -76,7 +76,7 @@ export default function SubforumPage({
                   </div>
                   <p className="content">
                     {post.content.length > 100
-                      ? `${post.content.slice(0, 100)}…`
+                      ? `${post.content.slice(0, 100)}`
                       : post.content}
                   </p>
                   <div className="footer">

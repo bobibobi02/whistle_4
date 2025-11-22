@@ -1,4 +1,4 @@
-// src/lib/email.ts
+﻿// src/lib/email.ts
 import nodemailer from "nodemailer";
 
 const {
@@ -29,7 +29,7 @@ export async function sendPasswordResetMail(opts: { to: string; token: string })
   const baseUrl = (NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
   const link = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-  const subject = "Whistle — Password reset";
+  const subject = "Whistle  Password reset";
   const text = `We received a request to reset the password for ${to}.
 This link expires in 30 minutes.
 
@@ -46,7 +46,7 @@ ${link}
         Reset password
       </a>
       <p style="margin:18px 0 0 0;font-size:12px;color:#9fb0c0">
-        If the button doesn’t work, paste this link in your browser:<br/>
+        If the button doesnt work, paste this link in your browser:<br/>
         <span style="word-break:break-all;color:#8ab4f8">${link}</span>
       </p>
     </div>
@@ -60,3 +60,4 @@ ${link}
     html,
   });
 }
+

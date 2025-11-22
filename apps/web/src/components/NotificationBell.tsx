@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import Link from "next/link";
 
 interface Notification {
@@ -18,7 +18,7 @@ export function NotificationBell() {
 
   return (
     <div className="relative">
-      <span className="text-white">🔔</span>
+      <span className="text-white"></span>
       {notifications.length > 0 && (
         <div className="absolute right-0 mt-2 bg-white text-black shadow p-2 rounded w-64 z-10">
           <h4 className="font-bold">Notifications</h4>
@@ -39,3 +39,4 @@ export function NotificationBell() {
     </div>
   );
 }
+

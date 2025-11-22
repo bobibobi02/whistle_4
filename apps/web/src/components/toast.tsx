@@ -1,4 +1,4 @@
-// apps/web/src/components/toast.tsx
+﻿// apps/web/src/components/toast.tsx
 // Keep this LOWERCASE filename on Windows to avoid casing collisions.
 import React, {
   createContext,
@@ -121,21 +121,21 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
 }
 
 function ToastBubble({ item, onClose }: { item: ToastItem; onClose: () => void }) {
-  // styles per variant — dark base with blue/green/red accents
+  // styles per variant  dark base with blue/green/red accents
   let border = "rgba(37,99,235,.45)"; // blue (info)
   let bg = "rgba(12,16,24,.96)";
   let role: "status" | "alert" = "status";
-  let icon = "ℹ️";
+  let icon = "";
 
   if (item.variant === "success") {
     border = "rgba(34,197,94,.45)"; // green
     bg = "rgba(16,24,16,.96)";
-    icon = "✅";
+    icon = "";
   } else if (item.variant === "error") {
     border = "rgba(185,28,28,.55)"; // red
     bg = "rgba(31,16,16,.96)";
     role = "alert";
-    icon = "⚠️";
+    icon = " ";
   }
 
   return (
@@ -191,3 +191,4 @@ export function Toast({ message, duration = 3000 }: { message: string; duration?
     </div>
   );
 }
+

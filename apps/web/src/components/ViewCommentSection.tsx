@@ -1,4 +1,4 @@
-// apps/web/src/components/ViewCommentSection.tsx
+﻿// apps/web/src/components/ViewCommentSection.tsx
 import React, { useMemo, useState } from 'react';
 
 type Props = {

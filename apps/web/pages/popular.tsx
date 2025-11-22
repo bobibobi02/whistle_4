@@ -1,9 +1,17 @@
-// pages/popular.tsx
+﻿// pages/popular.tsx
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
-import PostCard from '@/components/PostCard';
+import PostCard from '@/components/post-card/PostCard';
+function adaptToPostCardProps(p:any){
+  return {
+    postId: p.id,
+    user: p.user ?? { name: (p.userEmail||"user").split("@")[0] },
+    timestamp: p.createdAt ?? new Date().toISOString(),
+    ...p,
+  };
+}
 
 type Post = {
   id: string;
@@ -91,7 +99,7 @@ export default function PopularPage() {
   return (
     <>
       <Head>
-        <title>Popular — Whistle</title>
+        <title>Popular  Whistle</title>
         <meta name="description" content="Top posts ranked by likes over the recent window" />
       </Head>
 
@@ -99,7 +107,7 @@ export default function PopularPage() {
         <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Popular (last {WINDOW})</h1>
 
         {items.length === 0 && loading ? (
-          <div className="meta-pill" style={{ marginTop: 8 }}>Loading…</div>
+          <div className="meta-pill" style={{ marginTop: 8 }}>Loading</div>
         ) : null}
 
         {error ? (
@@ -110,14 +118,14 @@ export default function PopularPage() {
 
         <div style={{ display: 'grid', gap: 16 }}>
           {items.map((p) => (
-            <PostCard key={p.id} {...p} />
+            <PostCard key={p.id} {...adaptToPostCardProps(p)} />
           ))}
         </div>
 
         {!done && <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />}
 
         {loading && items.length > 0 ? (
-          <div className="meta-pill" style={{ marginTop: 12 }}>Loading more…</div>
+          <div className="meta-pill" style={{ marginTop: 12 }}>Loading more</div>
         ) : null}
 
         {done && items.length === 0 ? (
@@ -125,9 +133,10 @@ export default function PopularPage() {
         ) : null}
 
         {done && items.length > 0 ? (
-          <div className="meta-pill" style={{ marginTop: 12 }}>You’re all caught up.</div>
+          <div className="meta-pill" style={{ marginTop: 12 }}>Youre all caught up.</div>
         ) : null}
       </main>
     </>
   );
 }
+

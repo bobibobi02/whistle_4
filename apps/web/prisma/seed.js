@@ -13,7 +13,7 @@ const LIPSUM  = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Intege
 function ago(ms) { return new Date(Date.now() - ms); }
 
 async function main() {
-  console.log('🌱 Seeding dev database…');
+  console.log('рџЊ± Seeding dev databaseвЂ¦');
 
   // Ensure subforums exist
   for (const name of SUBS) {
@@ -43,7 +43,7 @@ async function main() {
     });
     posts.push(post);
   }
-  console.log(`📝 Created ${posts.length} posts.`);
+  console.log(`рџ“ќ Created ${posts.length} posts.`);
 
   // Votes: make varied scores
   let voteCount = 0;
@@ -60,7 +60,7 @@ async function main() {
       voteCount++;
     }
   }
-  console.log(`❤️ Cast ${voteCount} votes.`);
+  console.log(`вќ¤пёЏ Cast ${voteCount} votes.`);
 
   // Comments: a couple per first N posts
   let commentCount = 0;
@@ -87,9 +87,9 @@ async function main() {
     });
     commentCount++;
   }
-  console.log(`💬 Created ${commentCount} comments.`);
+  console.log(`рџ’¬ Created ${commentCount} comments.`);
 
-  console.log('✅ Seed complete.');
+  console.log('вњ… Seed complete.');
 }
 
 main()

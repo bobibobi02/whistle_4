@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Pencil, Trash2, CornerDownRight } from 'lucide-react';
 
+// Fallback editor state for body text
 /* =========================
    Types & Normalizers
 ========================= */
@@ -27,6 +28,8 @@ function normalizeTree(nodes?: CommentNode[]): CommentNode[] {
   return (nodes ?? []).map(normalizeNode);
 }
 function getChildren(n: CommentNode) {
+  const [content, setContent] = useState("");
+
   return n.children ?? [];
 }
 
@@ -49,7 +52,7 @@ async function apiFetchComments(postId: string): Promise<CommentNode[]> {
 }
 
 async function apiCreate(postId: string, body: string, parentId?: string) {
-  const payload = parentId ? { content, parentId } : { content };
+  const payload = parentId ? { body: (typeof window!=='undefined'?((document.getElementById('comment-input') as HTMLTextAreaElement|null)?.value ?? ''):''), parentId } : { body: (typeof window!=='undefined'?((document.getElementById('comment-input') as HTMLTextAreaElement|null)?.value ?? ''):'') };
   let res = await fetch(`/api/posts/${postId}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -75,14 +78,14 @@ async function apiEdit(postId: string, id: string, body: string) {
       'x-http-method-override': 'PATCH',
     },
     credentials: 'same-origin',
-    body: JSON.stringify({ id, content }),
+    body: JSON.stringify({ id, body: (typeof window!=='undefined'?((document.getElementById('comment-input') as HTMLTextAreaElement|null)?.value ?? ''):'') }),
   });
   if (!res.ok) {
     res = await fetch(`/api/comments`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ id, content }),
+      body: JSON.stringify({ id, body: (typeof window!=='undefined'?((document.getElementById('comment-input') as HTMLTextAreaElement|null)?.value ?? ''):'') }),
     });
   }
   if (!res.ok) throw new Error(`Failed to edit comment (${res.status})`);
@@ -163,7 +166,7 @@ export default function CommentSection({ postId }: { postId: string }) {
         <textarea
           value={composer}
           onChange={(e) => setComposer(e.target.value)}
-          placeholder="Write a commentвЂ¦"
+          placeholder="Write a comment  "
           rows={3}
           className="w-full resize-y rounded-lg border border-neutral-200 bg-white p-3 text-[15px] outline-none focus:border-emerald-500 dark:border-neutral-800 dark:bg-neutral-950"
         />
@@ -178,7 +181,7 @@ export default function CommentSection({ postId }: { postId: string }) {
         </div>
       </div>
 
-      {loading && <div className="text-sm text-neutral-500">LoadingвЂ¦</div>}
+      {loading && <div className="text-sm text-neutral-500">Loading  </div>}
       {err && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {err}
@@ -226,7 +229,7 @@ function CommentCard({
   const [isReplying, setIsReplying] = useState(false);
   const [replyValue, setReplyValue] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(node.content);
+  const [editValue, setEditValue] = useState(node.body ?? "");
 
   const initials =
     (node.userName || node.userEmail || 'U').trim().slice(0, 1).toUpperCase() || 'U';
@@ -294,7 +297,7 @@ function CommentCard({
             {/* Content / Edit */}
             {!isEditing ? (
               <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-800 dark:text-neutral-200">
-                {node.content}
+                {node.body ?? ""}
               </p>
             ) : (
               <div className="mt-2 space-y-2">
@@ -314,7 +317,7 @@ function CommentCard({
                   <button
                     onClick={() => {
                       setIsEditing(false);
-                      setEditValue(node.content);
+                      setEditValue(node.body ?? "");
                     }}
                     className="inline-flex h-8 items-center justify-center rounded-lg border border-neutral-200 px-3 text-sm dark:border-neutral-800"
                   >
@@ -363,7 +366,7 @@ function CommentCard({
                 <textarea
                   value={replyValue}
                   onChange={(e) => setReplyValue(e.target.value)}
-                  placeholder="Write a replyвЂ¦"
+                  placeholder="Write a reply  "
                   rows={3}
                   className="w-full resize-y rounded-lg border border-neutral-200 bg-white p-2 text-sm outline-none focus:border-emerald-500 dark:border-neutral-800 dark:bg-neutral-950"
                 />
@@ -409,3 +412,4 @@ function CommentCard({
     </div>
   );
 }
+

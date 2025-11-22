@@ -17,8 +17,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try{
     await prisma.passwordResetToken.deleteMany({ where:{ email } }).catch(()=>{});
-    const hasTokenHash = await prisma.$queryRawUnsafe<any[]>(`PRAGMA table_info('PasswordResetToken')`)
-      .then(cols=>cols.some(c=>c.name==="tokenHash")).catch(()=>false);
+    const rows = (await prisma.$queryRawUnsafe(
+  `PRAGMA table_info('PasswordResetToken')`
+)) as Array<{ name?: string }> | unknown;
+
+const hasTokenHash =
+  Array.isArray(rows) && rows.some((c: any) => c?.name === "tokenHash");
     if (hasTokenHash){
       await prisma.passwordResetToken.create({ data:{ email, tokenHash, expiresAt } as any });
     } else {
@@ -40,3 +44,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({ ok:true });
 }
+

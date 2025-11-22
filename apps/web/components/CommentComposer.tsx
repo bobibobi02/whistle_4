@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { useToast } from "@/components/toast";
 
 function makeCallbackUrl() {
@@ -17,7 +17,7 @@ export default function CommentComposer({
   parentId = null,
   onAdded,
   maxLen = 1000,
-  placeholder = "Write a commentвЂ¦",
+  placeholder = "Write a commentР  Р’ Р ™Р’ Р  РІв„ўР ™Р’ Р  Р’ Р ™Р’ Р  Р  Р  РІС™Р ™Р’ Р  Р’ Р ™Р’ Р  РІв„ўР ™Р’ Р  Р’ Р  РІ Р  Р’ Р Р†Р љРЎв„ўР  Р Р‹Р Р†РІС›РЎС›Р  Р’ Р ™Р’ Р  Р  Р  РІС™Р Р†РІС›РЎС›Р  Р’ Р Р†Р љРІћСћР  РІв„ўР ™Р’В¦",
 }: {
   postId: string;
   parentId?: string | null;
@@ -82,7 +82,7 @@ export default function CommentComposer({
       const comment = out.data?.comment ?? out.data;
       onAdded?.(comment);
       setText("");
-      toast("Comment added вњЁ", { variant: "success" });
+      toast("Comment added Р  Р’ Р ™Р’ Р  РІв„ўР ™Р’ Р  Р’ Р ™Р’ Р  Р  Р  РІС™Р ™Р’ Р  Р’ Р ™Р’ Р  Р’ Р  РІв„–Р  Р’ Р  Р №Р  Р  Р Р†Р љРЎєР РЋРЎєР  Р’ Р ™Р’ Р  РІв„ўР ™Р’ Р  Р’ Р ™Р’ Р  Р Р‹Р Р†Р љРЎС™", { variant: "success" });
     } catch (e: any) {
       const msg = e?.message || "Failed to post comment";
       setErr(msg);
@@ -115,7 +115,7 @@ export default function CommentComposer({
           style={{ flex: 1 }}
         />
         <button className="btn-solid" disabled={!canSend || busy} onClick={send}>
-          {busy ? "SendingвЂ¦" : "Send"}
+          {busy ? "SendingР  Р’ Р ™Р’ Р  РІв„ўР ™Р’ Р  Р’ Р ™Р’ Р  Р  Р  РІС™Р ™Р’ Р  Р’ Р ™Р’ Р  РІв„ўР ™Р’ Р  Р’ Р  РІ Р  Р’ Р Р†Р љРЎв„ўР  Р Р‹Р Р†РІС›РЎС›Р  Р’ Р ™Р’ Р  Р  Р  РІС™Р Р†РІС›РЎС›Р  Р’ Р Р†Р љРІћСћР  РІв„ўР ™Р’В¦" : "Send"}
         </button>
       </div>
 

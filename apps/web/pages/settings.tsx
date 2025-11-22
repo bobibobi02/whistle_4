@@ -1,4 +1,4 @@
-// pages/settings.tsx
+﻿// pages/settings.tsx
 import Head from "next/head";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
@@ -60,7 +60,7 @@ export default function SettingsPage() {
   return (
     <>
       <Head>
-        <title>Settings — Whistle</title>
+        <title>Settings  Whistle</title>
       </Head>
 
       <main className="container max-w-lg mx-auto py-8">
@@ -98,7 +98,7 @@ export default function SettingsPage() {
               disabled={saving}
               className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60"
             >
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? "Saving" : "Save changes"}
             </button>
 
             <button
@@ -116,3 +116,4 @@ export default function SettingsPage() {
     </>
   );
 }
+

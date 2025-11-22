@@ -1,4 +1,4 @@
-// pages/translate.tsx
+﻿// pages/translate.tsx
 import Head from "next/head";
 import TranslationForm from "@/components/TranslationForm";
 import TranslationList from "@/components/TranslationList";
@@ -10,7 +10,7 @@ export default function TranslatePage() {
   return (
     <>
       <Head>
-        <title>Translate — Whistle</title>
+        <title>Translate  Whistle</title>
       </Head>
       <main className="container max-w-2xl mx-auto py-6 space-y-6">
         <h1 className="text-2xl font-semibold">Translations</h1>
@@ -32,3 +32,4 @@ export default function TranslatePage() {
     </>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 
@@ -48,7 +48,7 @@ export default function SmtpTestPage() {
         </p>
 
         <button className="btn-solid" onClick={run} disabled={busy} style={{ marginBottom: 16 }}>
-          {busy ? 'Testing…' : 'Send test email'}
+          {busy ? 'Testing' : 'Send test email'}
         </button>
 
         {out && (
@@ -70,3 +70,4 @@ export default function SmtpTestPage() {
     </div>
   );
 }
+

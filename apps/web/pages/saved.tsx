@@ -1,4 +1,4 @@
-// apps/web/pages/saved.tsx
+﻿// apps/web/pages/saved.tsx
 import { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -105,7 +105,7 @@ export default function SavedPage({
   return (
     <>
       <Head>
-        <title>Whistle — Saved Posts</title>
+        <title>Whistle  Saved Posts</title>
       </Head>
 
       <main className="feed-wrap">
@@ -133,7 +133,7 @@ export default function SavedPage({
                         p.user?.email?.split?.("@")?.[0] ||
                         "user"}
                     </span>
-                    <span className="post-time">• {timeAgo(p.createdAt)}</span>
+                    <span className="post-time"> {timeAgo(p.createdAt)}</span>
                   </div>
 
                   {p.title ? (
@@ -152,13 +152,13 @@ export default function SavedPage({
 
                   <div className="post-meta">
                     <span className="meta-pill" title="Likes">
-                      ❤️ <strong>{getLikes(p)}</strong>
+                       <strong>{getLikes(p)}</strong>
                     </span>
                     <span className="meta-pill" title="Comments">
-                      💬 <strong>{getComments(p)}</strong>
+                       <strong>{getComments(p)}</strong>
                     </span>
                     <Link href={`/post/${p.id}`} className="view-link">
-                      View post →
+                      View post  
                     </Link>
                   </div>
                 </article>
@@ -170,3 +170,4 @@ export default function SavedPage({
     </>
   );
 }
+

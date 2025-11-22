@@ -1,4 +1,4 @@
-// pages/chat.tsx
+﻿// pages/chat.tsx
 import Head from "next/head";
 import MessagingUI from "@/components/MessagingUI";
 import VideoChatRoom from "@/components/VideoChatRoom";
@@ -34,7 +34,7 @@ export default function ChatPage() {
   return (
     <>
       <Head>
-        <title>Chat – Whistle</title>
+        <title>Chat  Whistle</title>
       </Head>
       <div className="container">
         <MessagingUI />
@@ -45,3 +45,4 @@ export default function ChatPage() {
     </>
   );
 }
+

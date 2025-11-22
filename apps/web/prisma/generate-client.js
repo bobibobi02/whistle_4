@@ -6,6 +6,6 @@ try {
     stdio: "inherit",
   });
 } catch (err) {
-  console.error("❌ Prisma client generation failed:", err.message);
+  console.error("вќЊ Prisma client generation failed:", err.message);
   process.exit(1);
 }

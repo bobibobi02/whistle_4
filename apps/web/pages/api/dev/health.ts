@@ -1,4 +1,4 @@
-// pages/api/dev/health.ts
+﻿// pages/api/dev/health.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default function handler(_req: NextApiRequest, res: NextApiResponse) {

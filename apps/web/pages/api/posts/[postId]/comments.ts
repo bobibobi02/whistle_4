@@ -1,129 +1,176 @@
-// pages/api/posts/[postId]/comments.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession } from 'next-auth';
-import { PrismaClient, Prisma } from '@prisma/client';
-import authOptions from '../../auth/[...nextauth]';
+﻿import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth";
 
-const prisma = new PrismaClient();
+import prisma from "@/lib/prismadb";
+import { authOptions } from "../../auth/[...nextauth]";
 
-type ErrorRes = { error: string };
+type CommentPayload = {
+  id?: string;
+  body?: string;
+  parentId?: string | null;
+};
+
+// Safely try to parse comment body as JSON { t?: string; img?: string }
+function parseBodyJson(
+  raw: string | null | undefined
+): null | { t?: string; img?: string } {
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj === "object") {
+      return obj as { t?: string; img?: string };
+    }
+  } catch {
+    // not JSON – ignore
+  }
+  return null;
+}
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<any | ErrorRes>
+  res: NextApiResponse
 ) {
-  const postId = String(req.query.postId || '');
-  if (!postId) return res.status(400).json({ error: 'Missing postId' });
-
-  try {
-    if (req.method === 'GET') {
-      // Prefer Comment.body; if that fails because the column doesn't exist in THIS DB, fall back to Comment.content.
-      try {
-        const rows = await prisma.comment.findMany({
-          where: { postId },
-          orderBy: { createdAt: 'asc' },
-          select: selectBody(),
-        });
-        return res.status(200).json(rows.map(shapeFromBody));
-      } catch (e: any) {
-        if (looksLikeUnknownField(e, 'body')) {
-          const rows = await prisma.comment.findMany({
-            where: { postId },
-            orderBy: { createdAt: 'asc' },
-            select: selectContent(),
-          });
-          return res.status(200).json(rows.map(shapeFromContent));
-        }
-        throw e;
-      }
-    }
-
-    if (req.method === 'POST') {
-      const session = await getServerSession(req, res, authOptions as any);
-      if (!session?.user?.email) return res.status(401).json({ error: 'Please log in.' });
-
-      const userEmail = String(session.user.email).toLowerCase();
-      const parentId = req.body?.parentId ? String(req.body.parentId) : null;
-      const text =
-        typeof req.body?.body === 'string'
-          ? req.body.body
-          : typeof req.body?.content === 'string'
-          ? req.body.content
-          : '';
-
-      if (!text.trim()) return res.status(400).json({ error: 'Missing body' });
-
-      // Try create with body first, then fallback to content if needed for legacy DBs
-      try {
-        const created = await prisma.comment.create({
-          data: { postId, userEmail, body: text, parentId: parentId || undefined } as any,
-          select: selectBody(),
-        });
-        return res.status(200).json(shapeFromBody(created));
-      } catch (e: any) {
-        if (looksLikeUnknownField(e, 'body')) {
-          const created = await prisma.comment.create({
-            data: { postId, userEmail, content: text, parentId: parentId || undefined } as any,
-            select: selectContent(),
-          });
-          return res.status(200).json(shapeFromContent(created));
-        }
-        throw e;
-      }
-    }
-
-    res.setHeader('Allow', 'GET, POST');
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  } catch (err: any) {
-    console.error('[api/posts/[postId]/comments] Error:', err);
-    return res.status(500).json({ error: err?.message || 'Internal Server Error' });
+  const postId = String(req.query.postId || "");
+  if (!postId) {
+    return res.status(400).json({ error: "Missing postId" });
   }
+
+  if (req.method === "GET") {
+    try {
+      const comments = await prisma.comment.findMany({
+        where: { postId },
+        orderBy: { createdAt: "asc" },
+        include: { user: true },
+      });
+
+      return res.status(200).json(comments);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("GET /api/posts/[postId]/comments error:", e);
+      return res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  }
+
+  if (req.method === "POST") {
+    return handlePost(req, res, postId);
+  }
+
+  res.setHeader("Allow", ["GET", "POST"]);
+  return res.status(405).end(`Method ${req.method} Not Allowed`);
 }
 
-function selectBody(): Prisma.CommentSelect {
-  return {
-    id: true,
-    postId: true,
-    userEmail: true,
-    parentId: true,
-    createdAt: true,
-    updatedAt: true,
-    body: true,
-  };
-}
+async function handlePost(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  postId: string
+) {
+  const session = await getServerSession(req, res, authOptions);
+  const userEmail = session?.user?.email || null;
 
-function selectContent(): Prisma.CommentSelect {
-  return {
-    id: true,
-    postId: true,
-    userEmail: true,
-    parentId: true,
-    createdAt: true,
-    updatedAt: true,
-    // legacy column name
-    content: true as any,
-  } as any;
-}
+  if (!session || !userEmail) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
 
-function shapeFromBody(row: any) {
-  return {
-    ...row,
-    body: row.body,
-    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
-  };
-}
+  const { id, body, parentId }: CommentPayload =
+    (req.body || {}) as CommentPayload;
 
-function shapeFromContent(row: any) {
-  return {
-    ...row,
-    body: row.content,
-    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
-  };
-}
+  const bodyRaw = (body ?? "").toString();
+  const bodyTrimmed = bodyRaw.trim();
 
-function looksLikeUnknownField(e: any, field: string) {
-  const msg = String(e?.message || '');
-  return /Unknown field/i.test(msg) && new RegExp('`' + field + '`').test(msg);
+  // ----- CREATE -----
+  if (!id) {
+    if (!bodyTrimmed) {
+      return res
+        .status(400)
+        .json({ error: "Comment body is required" });
+    }
+
+    try {
+      const created = await prisma.comment.create({
+        data: {
+          postId,
+          userEmail,
+          parentId: parentId || null,
+          body: bodyRaw,
+        },
+        include: { user: true },
+      });
+
+      return res.status(201).json({ ok: true, comment: created });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("CREATE comment error:", e);
+      return res.status(500).json({ error: "Failed to create comment" });
+    }
+  }
+
+  // ----- EDIT -----
+  try {
+    const existing = await prisma.comment.findUnique({
+      where: { id },
+    });
+
+    if (!existing || existing.postId !== postId) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    if (existing.userEmail !== userEmail) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const existingBody = existing.body ?? "";
+    const existingObj = parseBodyJson(existingBody);
+    const newObj = parseBodyJson(bodyRaw);
+
+    let finalBody: string;
+
+    if (newObj) {
+      // If new body JSON has NO img but old one does, keep old image
+      const mergedImg = newObj.img ?? existingObj?.img;
+
+      if (mergedImg) {
+        const textPart =
+          typeof newObj.t === "string"
+            ? newObj.t
+            : bodyTrimmed || existingObj?.t || "";
+        finalBody = JSON.stringify({
+          t: textPart,
+          img: mergedImg,
+        });
+      } else {
+        // No image in new or old -> just use what client sent
+        finalBody = bodyRaw;
+      }
+    } else if (existingObj?.img) {
+      // Old body had image JSON, new body is plain text -> keep image
+      const newText = bodyTrimmed || existingObj.t || "";
+      finalBody = JSON.stringify({
+        t: newText,
+        img: existingObj.img,
+      });
+    } else {
+      // Plain text before and after
+      finalBody = bodyRaw;
+    }
+
+    if (!finalBody.trim()) {
+      return res
+        .status(400)
+        .json({ error: "Comment cannot be empty after edit" });
+    }
+
+    const updated = await prisma.comment.update({
+      where: { id },
+      data: {
+        body: finalBody,
+      },
+      include: { user: true },
+    });
+
+    return res.status(200).json({ ok: true, comment: updated });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("UPDATE comment error:", e);
+    return res.status(500).json({ error: "Failed to update comment" });
+  }
 }

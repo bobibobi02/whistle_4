@@ -1,759 +1,1256 @@
-// apps/web/pages/post/[postId].tsx
-'use client';
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
+import ConfirmDeleteOverlay from "../../components/ConfirmDeleteOverlay";
 
-import { useEffect, useMemo, useState, useCallback, memo, useRef } from 'react';
-import Head from 'next/head';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
-import { postJSON } from '@/lib/fetchJson';
+/* ========= Types ========= */
 
-/* ---------- Home-feed emoji icons (match index.tsx) ---------- */
-const ICON = {
-  like: '\u2764\uFE0F',    // ❤️
-  dislike: '\uD83D\uDC94', // 💔
-  comment: '\uD83D\uDCAC', // 💬
-  link: '\uD83D\uDD17',    // 🔗
-  reply: '\u21A9\uFE0F',   // ↩️
-  edit: '\u270F\uFE0F',    // ✏️
-  del: '\uD83D\uDDD1\uFE0F', // 🗑️
-  save: '\u2B50',          // ⭐ (post-level only)
-  warn: '⚠️',
-  info: 'ℹ️',
-  bullet: '\u2022',
+type User = {
+  email: string;
+  name?: string | null;
 };
 
-/* ---------- Helpers ---------- */
-function timeAgo(input?: string | number | Date): string {
-  if (!input) return '';
-  const d = new Date(input).getTime();
-  if (!Number.isFinite(d)) return '';
-  const s = Math.max(1, Math.floor((Date.now() - d) / 1000));
-  const m = Math.floor(s / 60), h = Math.floor(m / 60), dys = Math.floor(h / 24);
-  if (s < 45) return 'just now';
-  if (s < 90) return '1m ago';
-  if (m < 45) return `${m}m ago`;
-  if (m < 90) return '1h ago';
-  if (h < 24) return `${h}h ago`;
-  if (h < 42) return '1d ago';
-  if (dys < 7) return `${dys}d ago`;
-  const w = Math.round(dys / 7);
-  return w <= 1 ? '1w ago' : `${w}w ago`;
-}
-function num(v: any) {
-  if (v == null) return 0;
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string' && !Number.isNaN(Number(v))) return Number(v);
-  if (Array.isArray(v)) return v.length;
-  return 0;
-}
+type RawComment = {
+  id: string;
+  postId: string;
+  userEmail: string;
+  createdAt: string;
+  updatedAt?: string | null;
+  body?: string | null;
+  text?: string | null;
+  content?: string | null;
+  parentId?: string | null;
+  user?: User | null;
+};
 
-/* ---------- Safe parsing helpers for GETs ---------- */
-async function safeJson<T = any>(res: Response): Promise<T | null> {
-  const ct = res.headers.get('content-type') || '';
-  const raw = await res.text().catch(() => '');
-  if (!raw) return null;
-  if (!ct.includes('application/json')) {
-    try { return JSON.parse(raw) as T; } catch { return null; }
-  }
-  try { return JSON.parse(raw) as T; } catch { return null; }
-}
-function sanitizeError(status: number, ct: string, raw: string): string {
-  if (ct.includes('application/json') && raw) {
-    try { const j = JSON.parse(raw); if (j?.error && typeof j.error === 'string') return j.error; } catch {}
-  }
-  if (status === 401) return 'Please log in.';
-  if (status === 429) return 'Too many requests. Please slow down.';
-  if (status >= 500) return 'Server is busy. Try again.';
-  return `HTTP ${status}`;
-}
+type CommentNode = RawComment & {
+  content: string;
+  imageUrl?: string | null;
+  children: CommentNode[];
+};
 
-/* ---------- Types ---------- */
 type Post = {
   id: string;
   title: string;
   body?: string | null;
   content?: string | null;
+  text?: string | null;
+  imageUrls?: string[] | null;
+  imageUrl?: string | null;
+  image?: string | null;
   mediaUrl?: string | null;
-  userEmail: string;
-  subforumName?: string | null;
-  createdAt?: string;
+  user?: User | null;
 };
 
-type DialogTone = 'default' | 'danger';
-type DialogConfig =
-  | { kind: 'confirm'; message: string; resolve: (ok: boolean) => void; tone?: DialogTone; confirmLabel?: string; cancelLabel?: string }
-  | { kind: 'notify'; message: string; resolve: () => void; tone?: DialogTone; confirmLabel?: string };
+/* ========= Comment body encoder / decoder ========= */
 
-/* ---------- Custom Dialog ---------- */
-function DialogHost({ dialog, close }: { dialog: DialogConfig | null; close: () => void }) {
-  const overlayRef = useRef<HTMLDivElement | null>(null);
-  const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
+type DecodedComment = {
+  text: string;
+  imageUrl: string | null;
+};
 
-  useEffect(() => { confirmBtnRef.current?.focus(); }, [dialog]);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!dialog) return;
-      if (e.key === 'Escape') { if (dialog.kind === 'confirm') dialog.resolve(false); else dialog.resolve(); close(); }
-      if (e.key === 'Enter')  { if (dialog.kind === 'confirm') dialog.resolve(true);  else dialog.resolve(); close(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [dialog, close]);
+function decodeCommentBody(rawInput: unknown): DecodedComment {
+  const raw = (rawInput ?? "").toString();
+  if (!raw) return { text: "", imageUrl: null };
 
-  if (!dialog) return null;
-  const isConfirm = dialog.kind === 'confirm';
-  const tone: DialogTone = dialog.tone ?? 'default';
-  const confirmLabel = dialog.confirmLabel ?? (isConfirm ? (tone === 'danger' ? 'Delete' : 'OK') : 'OK');
-  const cancelLabel  = (dialog as any).cancelLabel ?? 'Cancel';
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      const text =
+        typeof (parsed as any).t === "string" ? (parsed as any).t : "";
+      const imageUrl =
+        typeof (parsed as any).img === "string" && (parsed as any).img
+          ? (parsed as any).img
+          : null;
+      if ("t" in (parsed as any) || "img" in (parsed as any)) {
+        return { text, imageUrl };
+      }
+    }
+  } catch {
+    // not JSON, just plain text
+  }
 
-  const onOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === overlayRef.current) { if (isConfirm) dialog.resolve(false); else dialog.resolve(); close(); }
-  };
-  const onConfirm = () => { if (isConfirm) dialog.resolve(true); else dialog.resolve(); close(); };
-  const onCancel  = () => { if (isConfirm) dialog.resolve(false); else dialog.resolve(); close(); };
-
-  return (
-    <div ref={overlayRef} className={`dlg2-overlay ${tone}`} role="dialog" aria-modal="true" onMouseDown={onOverlayClick}>
-      <div className={`dlg2-card ${tone}`}>
-        <div className="dlg2-header">
-          <div className="dlg2-kicker">
-            <span aria-hidden className="dlg2-icon">{tone === 'danger' ? ICON.warn : ICON.info}</span>
-            <span className="dlg2-title">{isConfirm ? 'Confirm' : 'Notice'}</span>
-          </div>
-        </div>
-        <div className="dlg2-body">{dialog.message}</div>
-        <div className="dlg2-actions">
-          {isConfirm ? (
-            <>
-              <button ref={confirmBtnRef} className={`chip ${tone === 'danger' ? 'fill-rose' : 'fill-emerald'}`} onClick={onConfirm}>
-                <span aria-hidden>{tone === 'danger' ? ICON.del : '✅'}</span><span>{confirmLabel}</span>
-              </button>
-              <button className="chip outline" onClick={onCancel}><span aria-hidden>✖️</span><span>{cancelLabel}</span></button>
-            </>
-          ) : (
-            <button ref={confirmBtnRef} className="chip fill-emerald" onClick={onConfirm}><span aria-hidden>👍</span><span>{confirmLabel}</span></button>
-          )}
-        </div>
-      </div>
-
-      <style jsx global>{`
-        .dlg2-overlay{position:fixed;inset:0;display:grid;place-items:center;backdrop-filter:blur(2px);z-index:60;animation:fadeIn .12s ease-out}
-        .dlg2-overlay.default{background:linear-gradient(0deg,rgba(3,7,18,.78),rgba(3,7,18,.78)),radial-gradient(60% 40% at 50% 10%,rgba(16,185,129,.12),transparent 70%)}
-        .dlg2-overlay.danger{background:linear-gradient(0deg,rgba(3,7,18,.78),rgba(3,7,18,.78)),radial-gradient(60% 40% at 50% 10%,rgba(244,63,94,.10),transparent 70%)}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @media (prefers-reduced-transparency:reduce){.dlg2-overlay.default,.dlg2-overlay.danger{background:rgba(3,7,18,.86);backdrop-filter:none}}
-        .dlg2-card{width:min(560px,calc(100% - 32px));border-radius:18px;background:linear-gradient(180deg,rgba(18,24,35,.95),rgba(12,17,27,.95));border:1px solid #0b1220;box-shadow:0 18px 40px rgba(0,0,0,.42);color:#e5e7eb;transform:scale(.98);animation:popIn .14s ease-out forwards}
-        @keyframes popIn{to{transform:scale(1)}}
-        .dlg2-header{padding:14px 16px 8px;background:linear-gradient(180deg,rgba(34,197,94,.10),transparent);border-top-left-radius:18px;border-top-right-radius:18px}
-        .dlg2-card.danger .dlg2-header{background:linear-gradient(180deg,rgba(244,63,94,.12),transparent)}
-        .dlg2-kicker{display:flex;align-items:center;gap:10px}
-        .dlg2-icon{font-size:18px}
-        .dlg2-title{font-weight:800;letter-spacing:.01em;color:#f3f4f6}
-        .dlg2-body{padding:10px 16px 6px;color:#cbd5e1;line-height:1.6}
-        .dlg2-actions{padding:12px 16px 16px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-        .chip.fill-emerald{background:var(--emerald);color:#0b1220;border-radius:999px;padding:8px 12px;border:1px solid rgba(255,255,255,.08)}
-        .chip.fill-rose{background:var(--rose);color:#0b1220;border-radius:999px;padding:8px 12px;border:1px solid rgba(255,255,255,.08)}
-        .chip.outline{border-radius:999px;padding:8px 12px;border:1px solid rgba(148,163,184,.35);color:#e5e7eb;background:transparent}
-        .chip.outline:hover{background:rgba(255,255,255,.04)}
-      `}</style>
-    </div>
-  );
+  return { text: raw, imageUrl: null };
 }
 
-/* ===================== PAGE ===================== */
-export default function PostPage() {
+/* ========= Helpers ========= */
+
+function buildTree(rows: RawComment[]): CommentNode[] {
+  const byId = new Map<string, CommentNode>();
+  const roots: CommentNode[] = [];
+
+  rows.forEach((c) => {
+    const rawBody = c.body ?? c.text ?? c.content ?? "";
+    const decoded = decodeCommentBody(rawBody);
+    byId.set(c.id, {
+      ...(c as any),
+      content: decoded.text,
+      imageUrl: decoded.imageUrl,
+      children: [],
+    });
+  });
+
+  rows.forEach((c) => {
+    const node = byId.get(c.id)!;
+    if (c.parentId && byId.has(c.parentId)) {
+      byId.get(c.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  return roots;
+}
+
+const getAllImages = (post: Post | null): string[] => {
+  if (!post) return [];
+  const urls = new Set<string>();
+
+  if (Array.isArray(post.imageUrls)) {
+    for (const u of post.imageUrls) {
+      if (u) urls.add(u);
+    }
+  }
+
+  if (post.mediaUrl) urls.add(post.mediaUrl);
+  if (post.imageUrl) urls.add(post.imageUrl);
+
+  const anyPost = post as any;
+  if (typeof anyPost.image === "string" && anyPost.image) {
+    urls.add(anyPost.image);
+  }
+
+  return Array.from(urls);
+};
+
+/* ========= Vote helpers (post) ========= */
+
+async function fetchPostScore(postId: string): Promise<number | null> {
+  try {
+    const res = await fetch("/api/vote/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ postId }),
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json().catch(() => null);
+    if (!data) return null;
+
+    if (typeof data.score === "number") return data.score;
+    if (typeof data.total === "number") return data.total;
+    if (data[postId] && typeof data[postId].score === "number") {
+      return data[postId].score;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function sendVote(postId: string, value: number): Promise<boolean> {
+  try {
+    const res = await fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ postId, value }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/* ========= API helpers ========= */
+
+async function fetchPost(postId: string): Promise<Post | null> {
+  const res = await fetch(`/api/posts?id=${encodeURIComponent(postId)}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return Array.isArray(data) ? (data[0] ?? null) : data;
+}
+
+async function fetchComments(postId: string): Promise<RawComment[]> {
+  let res = await fetch(`/api/posts/${postId}/comments`, {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    res = await fetch(`/api/comments?postId=${encodeURIComponent(postId)}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+  }
+
+  if (!res.ok) return [];
+  const rows: RawComment[] = await res.json();
+  return rows;
+}
+
+async function saveComment(args: {
+  postId: string;
+  body: string;
+  id?: string;
+  parentId?: string;
+}) {
+  let res = await fetch(`/api/posts/${args.postId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(args),
+  }).catch(() => null);
+
+  if (!res || !res.ok) {
+    res = await fetch(`/api/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(args),
+    }).catch(() => null);
+  }
+
+  if (!res) throw new Error("Comment failed");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error ?? "Comment failed");
+  return data;
+}
+
+async function deleteComment(id: string) {
+  const res = await fetch(`/api/comments?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  }).catch(() => null);
+
+  if (!res) throw new Error("Delete failed");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error ?? "Delete failed");
+}
+
+async function deletePost(id: string) {
+  const res = await fetch("/api/posts/" + encodeURIComponent(id), {
+    method: "DELETE",
+    credentials: "same-origin",
+  }).catch(() => null);
+
+  if (!res) {
+    throw new Error("Delete failed");
+  }
+
+  const data = await res.json().catch(() => ({} as any));
+
+  if (!res.ok || (data && (data as any).ok === false)) {
+    throw new Error("Delete failed");
+  }
+}
+
+/* ========= Page ========= */
+
+const PostPage: React.FC = () => {
   const router = useRouter();
+  const postId = (router.query.postId as string) || "";
   const { data: session } = useSession();
-  const { postId } = router.query as { postId?: string };
+  const currentUserEmail = session?.user?.email ?? null;
 
   const [post, setPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<RawComment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // unified dialog state
-  const [dialog, setDialog] = useState<DialogConfig | null>(null);
-  const closeDialog = () => setDialog(null);
-  const confirm = useCallback((message: string, tone: DialogTone = 'default', confirmLabel?: string, cancelLabel?: string) =>
-    new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', message, resolve, tone, confirmLabel, cancelLabel }))
-  , []);
-  const notify = useCallback((message: string, tone: DialogTone = 'default', confirmLabel?: string) =>
-    new Promise<void>((resolve) => setDialog({ kind: 'notify', message, resolve, tone, confirmLabel }))
-  , []);
+  const [score, setScore] = useState<number | null>(null);
+  const [myVote, setMyVote] = useState<0 | 1 | -1>(0);
 
-  // single-post vote state
-  const [voted, setVoted] = useState<'up' | 'down' | null>(null);
-  const [up, setUp] = useState(0);
-  const [down, setDown] = useState(0);
+  const [composer, setComposer] = useState("");
+  const [mode, setMode] =
+    useState<null | { type: "reply" | "edit"; commentId: string }>(null);
 
-  const inFlightRef = useRef(false);
-  const lastClickAtRef = useRef(0);
-  const COOLDOWN_MS = 500;
+  const [commentImageUrl, setCommentImageUrl] = useState<string | null>(null);
+  const [commentImagePreview, setCommentImagePreview] = useState<
+    string | null
+  >(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // delete overlay state (comments)
+  const [deleteTargetCommentId, setDeleteTargetCommentId] = useState<string | null>(null);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
+
+  // delete overlay state (post)
+  const [showPostDelete, setShowPostDelete] = useState(false);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
 
   useEffect(() => {
-    if (!router.isReady || !postId) return;
-    let active = true;
-
-    const fetchPost = async (): Promise<Post | null> => {
-      let r = await fetch(`/api/posts?id=${encodeURIComponent(postId)}&t=${Date.now()}`, { cache: 'no-store' });
-      if (!r.ok) {
-        r = await fetch(`/api/posts?ids=${encodeURIComponent(postId)}&t=${Date.now()}`, { cache: 'no-store' });
-        if (!r.ok) throw new Error(`Failed to load post (${r.status})`);
-      }
-      const j = await safeJson<any>(r);
-      const item =
-        (Array.isArray(j?.items) && j.items[0]) ||
-        (Array.isArray(j) && j[0]) ||
-        j?.item ||
-        j?.post ||
-        null;
-      return item as Post | null;
-    };
-
+    if (!postId) return;
     (async () => {
       setLoading(true);
-      setError(null);
-      try {
-        const p = await fetchPost();
-        if (!active) return;
-        setPost(p);
-
-        if (p?.id) {
-          try {
-            const stats = await postJSON<Record<string, { up: number; down: number }>>('/api/vote/stats', { ids: [p.id] });
-            setUp(stats?.[p.id]?.up ?? num((p as any)?.likes) ?? 0);
-            setDown(stats?.[p.id]?.down ?? 0);
-          } catch {
-            setUp(num((p as any)?.likes) ?? 0);
-            setDown(0);
-          }
-          try {
-            const v = localStorage.getItem(`whistle:vote:${p.id}`);
-            // ✅ FIXED: closed the parenthesis properly
-            setVoted(v === 'up' || v === 'down' ? (v as 'up' | 'down') : null);
-          } catch {}
-        }
-      } catch (e: any) {
-        if (active) setError(e?.message ?? 'Failed to load post');
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-
-    return () => { active = false; };
-  }, [router.isReady, postId]);
-
-  const isOwner = useMemo(() => {
-    if (!session?.user?.email || !post?.userEmail) return false;
-    return session.user.email === post.userEmail;
-  }, [session?.user?.email, post?.userEmail]);
-
-  /* ---------- Voting ---------- */
-  const vote = useCallback(async (value: 1 | -1) => {
-    if (!post) return;
-    const now = Date.now();
-    if (now - lastClickAtRef.current < COOLDOWN_MS) return;
-    lastClickAtRef.current = now;
-    if (inFlightRef.current) return;
-
-    const desired: 'up' | 'down' | null =
-      (voted === 'up' && value === 1) ? null :
-      (voted === 'down' && value === -1) ? null :
-      (value === 1 ? 'up' : 'down');
-
-    if (voted === desired) return;
-
-    let newUp = up, newDown = down;
-    if (voted === null && desired === 'up') newUp += 1;
-    else if (voted === null && desired === 'down') newDown += 1;
-    else if (voted === 'up' && desired === 'down') { newUp = Math.max(0, newUp - 1); newDown += 1; }
-    else if (voted === 'down' && desired === 'up') { newDown = Math.max(0, newDown - 1); newUp += 1; }
-    else if (voted === 'up' && desired === null) newUp = Math.max(0, newUp - 1);
-    else if (voted === 'down' && desired === null) newDown = Math.max(0, newDown - 1);
-
-    setVoted(desired); setUp(newUp); setDown(newDown);
-
-    inFlightRef.current = true;
-    try {
-      const sendVal = desired === null ? 0 : (desired === 'up' ? 1 : -1);
-      const res = await postJSON<any>('/api/vote', { postId: post.id, value: sendVal });
-      if (typeof res?.up === 'number' && typeof res?.down === 'number') { setUp(res.up); setDown(res.down); }
-      try { desired ? localStorage.setItem(`whistle:vote:${post.id}`, desired) : localStorage.removeItem(`whistle:vote:${post.id}`); } catch {}
-    } catch (e: any) {
-      try {
-        const stats = await postJSON<Record<string, { up: number; down: number }>>('/api/vote/stats', { ids: [post.id] });
-        setUp(stats?.[post.id]?.up ?? up); setDown(stats?.[post.id]?.down ?? down);
-      } catch {}
-      notify(e?.message || 'Server is busy. Try again.', 'default');
-    } finally {
-      inFlightRef.current = false;
-    }
-  }, [post, voted, up, down, notify]);
-
-  const handleDelete = useCallback(async () => {
-    if (!post) return;
-    const ok = await confirm('Delete this post?', 'danger', 'Delete', 'Cancel');
-    if (!ok) return;
-
-    const tries = [
-      fetch(`/api/posts?id=${post.id}`, { method: 'POST', headers: { 'x-http-method-override': 'DELETE' } }),
-      fetch(`/api/posts?id=${post.id}&_method=DELETE`, { method: 'POST' }),
-      fetch(`/api/posts?id=${post.id}`, { method: 'DELETE' }),
-    ];
-    for (const req of tries) {
-      try { const res = await req; if (res.ok) { router.push('/'); return; } } catch {}
-    }
-    notify('Could not delete the post. Please try again.', 'default');
-  }, [post, router, confirm, notify]);
-
-  const mediaUrl = post?.mediaUrl ?? null;
-  const title = post?.title ?? '';
-  const caption = (post?.body ?? post?.content ?? '') as string;
-
-  const share = async () => {
-    if (!post?.id) return;
-    const url = typeof window !== 'undefined' ? location.origin + `/post/${post.id}` : `/post/${post.id}`;
-    try {
-      if (navigator.share) await navigator.share({ title: 'Whistle', url });
-      else { await navigator.clipboard.writeText(url); notify('Link copied to clipboard.', 'default'); }
-    } catch {}
-  };
-
-  return (
-    <>
-      <Head><title>{post ? `${post.title} • Whistle` : 'Post • Whistle'}</title></Head>
-
-      <div className="whp mx-auto w-full max-w-2xl px-4 py-6">
-        <div className="mb-4 text-sm">
-          <Link href="/" className="inline-flex items-center gap-2 whp-link">
-            <ArrowLeft size={16} /> Back to Feed
-          </Link>
-        </div>
-
-        {loading && <div className="whp-state">Loading…</div>}
-        {error && <div className="whp-state whp-error">{error}</div>}
-
-        {!loading && !error && post && (
-          <article>
-            <header className="mb-3">
-              <div className="whp-subtle">r/{post.subforumName ?? 'General'}</div>
-              <h1 className="whp-title">{post.title}</h1>
-              {post.createdAt && (<div className="whp-stamp whp-subtle">{ICON.bullet} {timeAgo(post.createdAt)}</div>)}
-            </header>
-
-            {caption && <div className="whp-body mb-3">{caption}</div>}
-            <PostMedia mediaUrl={mediaUrl} alt={title} />
-
-            {/* ACTION ROW */}
-            <div className="mt-4 flex flex-wrap items-center gap-6">
-              <button className={`chip${voted === 'up' ? ' active' : ''}`} onClick={() => vote(+1)} aria-label="Like" title="Like" style={{ padding: '6px 10px' }}>
-                <span aria-hidden>{ICON.like}</span><span>Like</span>
-              </button>
-              <button className={`chip${voted === 'down' ? ' active' : ''}`} onClick={() => vote(-1)} aria-label="Dislike" title="Dislike" style={{ padding: '6px 10px' }}>
-                <span aria-hidden>{ICON.dislike}</span><span>Dislike</span>
-              </button>
-              <a href="#comments" className="chip" title="Comments" aria-label="Comments" style={{ padding: '6px 10px', textDecoration: 'none' }}>
-                <span aria-hidden>{ICON.comment}</span><span>Comments</span>
-              </a>
-              <button className="chip" onClick={share} title="Share" aria-label="Share" style={{ padding: '6px 10px' }}>
-                <span aria-hidden>{ICON.link}</span><span>Share</span>
-              </button>
-
-              <span className="meta-pill" style={{ marginLeft: 'auto' }} title="Likes">{ICON.like} {up}</span>
-              <span className="meta-pill" title="Dislikes">{ICON.dislike} {down}</span>
-
-              {/* Post-level Save */}
-              <InlineSaveButton postId={post.id} notify={notify} />
-
-              {isOwner && (
-                <button className="chip" onClick={handleDelete} title="Delete post" aria-label="Delete post">
-                  <Trash2 size={16} />
-                  <span>Delete</span>
-                </button>
-              )}
-            </div>
-
-            {/* Comments */}
-            <div id="comments" className="mt-8">
-              <CommentSectionInline postId={post.id} confirm={confirm} notify={notify} />
-            </div>
-          </article>
-        )}
-      </div>
-
-      {/* Global styles */}
-      <style jsx global>{`
-        .whp{
-          --emerald:#22C55E; --emerald-weak:rgba(34,197,94,.12);
-          --rose:#f43f5e; --text:#e5e7eb; --text-subtle:#9ca3af;
-          --panel:rgba(17,24,39,.3); --panel-ring:#0b1220; color:var(--text);
-        }
-        .whp .whp-link{color:var(--emerald)!important}
-        .whp .whp-link:hover{text-decoration:underline!important}
-        .whp .whp-state{background:rgba(255,255,255,.04)!important;padding:16px;border-radius:12px}
-        .whp .whp-error{background:rgba(244,63,94,.12)!important;color:#fecaca!important}
-        .whp .whp-title{font-weight:800;font-size:22px;line-height:1.25;color:#f3f4f6;margin-top:4px}
-        .whp .whp-subtle{color:var(--text-subtle)!important;font-size:12px;font-weight:600;letter-spacing:.02em}
-        .whp .whp-stamp{margin-top:4px}
-        .whp .whp-media-wrap{background:var(--panel);border-radius:14px;padding:8px;outline:1px solid var(--panel-ring)}
-        .whp .whp-media{display:block;width:100%;max-height:66vh;height:auto;border-radius:10px;object-fit:contain}
-        .whp .whp-body{color:var(--text);white-space:pre-wrap;line-height:1.6}
-        .whp .whp-editor{width:100%;min-height:96px;padding:12px;border-radius:10px;border:1px solid transparent!important;background:rgba(255,255,255,.02)!important;color:var(--text)!important}
-        .whp .whp-editor::placeholder{color:var(--text-subtle)!important}
-        .whp .whp-editor:focus{outline:2px solid var(--emerald)!important;outline-offset:0!important}
-        .whp .whp-row{display:flex;align-items:flex-start;gap:8px}
-        .whp .whp-meta{display:flex;align-items:center;gap:6px;line-height:1}
-        .whp .whp-dot{color:var(--text-subtle);user-select:none}
-        .whp .whp-username{font-size:14px;font-weight:700;color:#f3f4f6}
-        .whp .whp-time{font-size:12px;color:#e5e7eb}
-        .whp .whp-thread{margin-left:22px;padding-left:12px;border-left:1px solid rgba(148,163,184,.15)!important}
-      `}</style>
-
-      <DialogHost dialog={dialog} close={closeDialog} />
-    </>
-  );
-}
-
-/* ---------- Media ---------- */
-const PostMedia = memo(function PostMediaBase({ mediaUrl, alt }: { mediaUrl: string | null; alt?: string }) {
-  if (!mediaUrl) {
-    return (
-      <div className="whp-media-wrap" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:160,borderStyle:'dashed',borderWidth:1,borderColor:'rgba(148,163,184,.35)',background:'rgba(255,255,255,.02)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10,color:'#9ca3af'}}>
-          <div style={{width:40,height:40,borderRadius:9999,border:'1px solid rgba(148,163,184,.35)',display:'grid',placeItems:'center'}}>
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden><path d="M4 5h16v14H4zM4 16l4-4 3 3 5-5 4 4" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
-          </div>
-          <span>No media attached</span>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="whp-media-wrap">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={mediaUrl} alt={alt ?? 'Post image'} className="whp-media" loading="lazy" />
-    </div>
-  );
-});
-
-/* ---------- Post Save (post-level only) ---------- */
-function InlineSaveButton({ postId, notify }: { postId: string; notify: (m: string, t?: 'default'|'danger', cLabel?: string) => Promise<void> }) {
-  const key = (id: string) => `whistle:save:${id}`;
-  const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    try { setSaved(localStorage.getItem(key(postId)) === '1'); } catch {}
-    (async () => {
-      try {
-        const r = await fetch(`/api/saved?postId=${encodeURIComponent(postId)}`, { cache: 'no-store' });
-        if (!r.ok) return;
-        const j = await safeJson<any>(r);
-        if (j && typeof j.saved === 'boolean') setSaved(!!j.saved);
-      } catch {}
+      const [p, c, s] = await Promise.all([
+        fetchPost(postId),
+        fetchComments(postId),
+        fetchPostScore(postId),
+      ]);
+      setPost(p);
+      setComments(c);
+      setScore(s);
+      setMyVote(0);
+      setLoading(false);
     })();
   }, [postId]);
 
-  const toggle = useCallback(async () => {
-    if (busy) return;
-    const next = !saved;
-    setBusy(true);
-    setSaved(next);
-    try { localStorage.setItem(key(postId), next ? '1' : '0'); } catch {}
+  const tree = useMemo(() => buildTree(comments), [comments]);
+
+  const refresh = async () => {
+    if (!postId) return;
+    setComments(await fetchComments(postId));
+    setScore(await fetchPostScore(postId));
+  };
+
+  const focusComposer = () => {
+    const el = document.getElementById(
+      "comment-composer"
+    ) as HTMLTextAreaElement | null;
+    el?.focus();
+  };
+
+  const startReply = (id: string) => {
+    setMode({ type: "reply", commentId: id });
+    setComposer("");
+    setCommentImageUrl(null);
+    setCommentImagePreview(null);
+    setUploadError(null);
+    focusComposer();
+  };
+
+  const startEdit = (id: string, text: string) => {
+    setMode({ type: "edit", commentId: id });
+    setComposer(text);
+    setCommentImageUrl(null);
+    setCommentImagePreview(null);
+    setUploadError(null);
+    focusComposer();
+  };
+
+  const resetComposer = () => {
+    setMode(null);
+    setComposer("");
+    setCommentImageUrl(null);
+    setCommentImagePreview(null);
+    setUploadError(null);
+  };
+
+  const handlePickImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = async (
+    e
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+    setIsUploadingImage(true);
+    setCommentImagePreview(null);
+    setCommentImageUrl(null);
+
     try {
-      const res = await fetch('/api/save', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ postId, action: 'toggle' }),
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
       });
-      if (!res.ok) throw new Error(String(res.status));
+
+      if (!uploadRes.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await uploadRes.json().catch(() => ({} as any));
+
+      let url: string | null = null;
+      if (typeof data.url === "string") {
+        url = data.url;
+      } else if (Array.isArray(data.urls) && data.urls[0]) {
+        url = data.urls[0];
+      }
+
+      if (!url) {
+        throw new Error("Upload did not return a URL");
+      }
+
+      setCommentImageUrl(url);
+      setCommentImagePreview(url);
     } catch {
-      setSaved(!next);
-      try { localStorage.setItem(key(postId), !next ? '1' : '0'); } catch {}
-      notify('Save failed.');
-    } finally { setBusy(false); }
-  }, [busy, postId, saved, notify]);
+      setUploadError("Failed to upload image");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!postId) return;
+    const rawBody = composer.trim();
+
+    if (!rawBody && !commentImageUrl) return;
+
+    const bodyToSend = JSON.stringify({
+      t: rawBody,
+      img: commentImageUrl || null,
+    });
+
+    const payload: {
+      postId: string;
+      body: string;
+      id?: string;
+      parentId?: string;
+    } = { postId, body: bodyToSend };
+
+    if (mode?.type === "edit") payload.id = mode.commentId;
+    if (mode?.type === "reply") payload.parentId = mode.commentId;
+
+    await saveComment(payload);
+    resetComposer();
+    await refresh();
+  };
+
+  // open overlay for comment delete
+  const askDeleteComment = (id: string) => {
+    setDeleteTargetCommentId(id);
+  };
+
+  const performDeleteComment = async () => {
+    if (!deleteTargetCommentId) return;
+    setIsDeletingComment(true);
+    try {
+      await deleteComment(deleteTargetCommentId);
+      await refresh();
+    } finally {
+      setIsDeletingComment(false);
+      setDeleteTargetCommentId(null);
+    }
+  };
+
+  const cancelDeleteComment = () => {
+    if (isDeletingComment) return;
+    setDeleteTargetCommentId(null);
+  };
+
+  // post delete
+  const canDeletePost = !!currentUserEmail;
+
+  const askDeletePost = () => {
+    if (!canDeletePost) return;
+    setShowPostDelete(true);
+  };
+
+  const performDeletePost = async () => {
+    if (!post) return;
+    setIsDeletingPost(true);
+    try {
+      await deletePost(post.id);
+      router.push("/");
+    } finally {
+      setIsDeletingPost(false);
+      setShowPostDelete(false);
+    }
+  };
+
+  const cancelDeletePost = () => {
+    if (isDeletingPost) return;
+    setShowPostDelete(false);
+  };
+
+  const handleVote = async (next: 1 | -1) => {
+    if (!postId || !session?.user) return;
+
+    const prev = myVote;
+    const newVote = prev === next ? 0 : next;
+
+    setMyVote(newVote);
+    setScore((s) => {
+      const base = s ?? 0;
+      return base + (newVote - prev);
+    });
+
+    const ok = await sendVote(postId, newVote);
+    if (!ok) {
+      setMyVote(prev);
+      setScore((s) => {
+        const base = s ?? 0;
+        return base - (newVote - prev);
+      });
+    }
+  };
+
+  if (!postId) return <div style={{ padding: 24 }}>Missing post id.</div>;
+  if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (!post) return <div style={{ padding: 24 }}>Post not found.</div>;
+
+  const composerButtonLabel =
+    mode?.type === "reply"
+      ? "Reply"
+      : mode?.type === "edit"
+      ? "Save edit"
+      : "Add comment";
+
+  const images = getAllImages(post);
+
+  const bodyText = (
+    post.body ??
+    (post as any).content ??
+    (post as any).text ??
+    ""
+  ).toString();
+  const hasBody = bodyText.trim().length > 0;
+
+  const authorName = post.user?.name || post.user?.email || "whistler";
 
   return (
-    <button className={`chip${saved ? ' active' : ''}`} onClick={toggle} title={saved ? 'Saved' : 'Save'}>
-      <span aria-hidden>{ICON.save}</span><span>{saved ? 'Saved' : 'Save'}</span>
+    <>
+      <main
+        style={{
+          maxWidth: 980,
+          margin: "0 auto",
+          padding: "24px 16px 48px",
+          color: "#E5E7EB",
+        }}
+      >
+        {/* Back link */}
+        <div style={{ marginBottom: 16 }}>
+          <Link
+            href="/"
+            style={{
+              color: "#22C55E",
+              fontSize: 13,
+              textDecoration: "none",
+            }}
+          >
+            Back to Feed
+          </Link>
+        </div>
+
+        {/* Post row */}
+        <article
+          style={{
+            display: "grid",
+            gridTemplateColumns: "48px 1fr",
+            gap: 16,
+            paddingBottom: 24,
+            marginBottom: 18,
+            borderBottom: "1px solid rgba(31,41,55,0.9)",
+          }}
+        >
+          {/* Vote column */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 4,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleVote(1)}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                border: "none",
+                background:
+                  myVote === 1 ? "#22C55E" : "rgba(148,163,184,0.18)",
+                color: myVote === 1 ? "#020817" : "#9CA3AF",
+                cursor: session?.user ? "pointer" : "default",
+              }}
+            />
+            <div
+              style={{
+                minWidth: 30,
+                textAlign: "center",
+                fontSize: 11,
+                fontWeight: 600,
+                color: (score ?? 0) >= 0 ? "#22C55E" : "#F97316",
+              }}
+            >
+              {score ?? 0}
+            </div>
+            <button
+              type="button"
+              onClick={() => handleVote(-1)}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                border: "none",
+                background:
+                  myVote === -1 ? "#F97316" : "rgba(148,163,184,0.18)",
+                color: myVote === -1 ? "#020817" : "#9CA3AF",
+                cursor: session?.user ? "pointer" : "default",
+              }}
+            />
+          </div>
+
+          {/* Post content column */}
+          <div>
+            <header
+              style={{
+                marginBottom: 8,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <h1
+                    style={{
+                      margin: 0,
+                      marginBottom: 2,
+                      fontSize: 24,
+                      fontWeight: 700,
+                      color: "#F9FAFB",
+                    }}
+                  >
+                    {post.title}
+                  </h1>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#9CA3AF",
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span>Posted by</span>
+                    <span style={{ color: "#E5E7EB", fontWeight: 500 }}>
+                      {authorName}
+                    </span>
+                  </div>
+                </div>
+
+                {canDeletePost && (
+                  <button
+                    type="button"
+                    onClick={askDeletePost}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(248,113,113,0.9)",
+                      background: "transparent",
+                      color: "#FCA5A5",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      marginTop: 2,
+                    }}
+                  >
+                    Delete post
+                  </button>
+                )}
+              </div>
+            </header>
+
+            {hasBody && (
+              <p
+                style={{
+                  marginTop: 10,
+                  marginBottom: images.length ? 16 : 0,
+                  whiteSpace: "pre-wrap",
+                  color: "#D1D5DB",
+                  lineHeight: 1.7,
+                  fontSize: 14,
+                }}
+              >
+                {bodyText}
+              </p>
+            )}
+
+            {images.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <div
+                  style={{
+                    borderRadius: 26,
+                    padding: 10,
+                    background:
+                      "linear-gradient(135deg,#22C55E,#0EA5E9,#1D4ED8)",
+                    maxWidth: 520,
+                    width: "100%",
+                  }}
+                >
+                  <div
+                    style={{
+                      borderRadius: 22,
+                      overflow: "hidden",
+                      backgroundColor: "#020817",
+                    }}
+                  >
+                    {images.map((src, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={i}
+                        src={src}
+                        alt="Post media"
+                        style={{
+                          width: "100%",
+                          height: "auto",
+                          display: "block",
+                          objectFit: "contain",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </article>
+
+        {/* Composer */}
+        <section style={{ marginBottom: 22 }}>
+          <textarea
+            id="comment-composer"
+            value={composer}
+            onChange={(e) => setComposer(e.target.value)}
+            placeholder="Add useful thoughts..."
+            rows={3}
+            style={{
+              width: "100%",
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: "1px solid rgba(75,85,99,0.9)",
+              background: "transparent",
+              color: "#E5E7EB",
+              fontSize: 13,
+              resize: "vertical",
+              outline: "none",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: 8,
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handlePickImage}
+                style={{
+                  padding: "5px 10px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(148,163,184,0.7)",
+                  background: "transparent",
+                  color: "#9CA3AF",
+                  fontSize: 11,
+                  cursor: "pointer",
+                }}
+              >
+                {isUploadingImage ? "Uploading…" : "Attach image"}
+              </button>
+              {commentImagePreview && (
+                <div
+                  style={{
+                    borderRadius: 14,
+                    padding: 3,
+                    background:
+                      "linear-gradient(135deg,#22C55E,#0EA5E9,#1D4ED8)",
+                    maxWidth: 120,
+                  }}
+                >
+                  <div
+                    style={{
+                      borderRadius: 11,
+                      overflow: "hidden",
+                      backgroundColor: "#020817",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={commentImagePreview}
+                      alt="Attached"
+                      style={{
+                        width: "100%",
+                        height: "auto",
+                        display: "block",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {uploadError && (
+                <span style={{ color: "#FCA5A5", fontSize: 11 }}>
+                  {uploadError}
+                </span>
+              )}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              {mode && (
+                <button
+                  type="button"
+                  onClick={resetComposer}
+                  style={{
+                    padding: "5px 11px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(148,163,184,0.5)",
+                    background: "transparent",
+                    color: "#9CA3AF",
+                    fontSize: 11,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={submit}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: "linear-gradient(to right,#22C55E,#16A34A)",
+                  color: "#020817",
+                  fontWeight: 600,
+                  fontSize: 11,
+                  cursor: "pointer",
+                }}
+              >
+                {composerButtonLabel}
+              </button>
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+        </section>
+
+        {/* Comments */}
+        <section>
+          <h2
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#E5E7EB",
+              marginBottom: 8,
+            }}
+          >
+            Comments
+          </h2>
+          <CommentList
+            nodes={tree}
+            depth={0}
+            onReply={startReply}
+            onEdit={startEdit}
+            onDelete={askDeleteComment}
+            currentUserEmail={currentUserEmail}
+          />
+        </section>
+      </main>
+
+      {/* Post delete overlay */}
+      {showPostDelete && (
+        <ConfirmDeleteOverlay
+          title="Delete post"
+          message="Are you sure you want to delete this post? This action cannot be undone."
+          confirming={isDeletingPost}
+          onCancel={cancelDeletePost}
+          onConfirm={performDeletePost}
+        />
+      )}
+
+      {/* Comment delete overlay */}
+      {deleteTargetCommentId && (
+        <ConfirmDeleteOverlay
+          title="Delete comment"
+          message="Are you sure you want to delete this comment? This action cannot be undone."
+          confirming={isDeletingComment}
+          onCancel={cancelDeleteComment}
+          onConfirm={performDeleteComment}
+        />
+      )}
+    </>
+  );
+};
+
+/* ========= Threaded comment tree ========= */
+
+function CommentList(props: {
+  nodes: CommentNode[];
+  depth: number;
+  onReply: (id: string) => void;
+  onEdit: (id: string, text: string) => void;
+  onDelete: (id: string) => void;
+  currentUserEmail: string | null;
+}) {
+  const { nodes, depth, onReply, onEdit, onDelete, currentUserEmail } = props;
+  if (!nodes?.length) return null;
+
+  return (
+    <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      {nodes.map((n) => (
+        <li key={n.id} style={{ marginTop: depth === 0 ? 10 : 6 }}>
+          <CommentItem
+            node={n}
+            depth={depth}
+            onReply={onReply}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            currentUserEmail={currentUserEmail}
+          />
+
+          {n.children?.length > 0 && (
+            <div
+              style={{
+                marginLeft: 22,
+                marginTop: 4,
+                paddingLeft: 14,
+                borderLeft: "2px solid rgba(55,65,81,0.9)",
+              }}
+            >
+              <CommentList
+                nodes={n.children}
+                depth={depth + 1}
+                onReply={onReply}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                currentUserEmail={currentUserEmail}
+              />
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CommentItem(props: {
+  node: CommentNode;
+  depth: number;
+  onReply: (id: string) => void;
+  onEdit: (id: string, text: string) => void;
+  onDelete: (id: string) => void;
+  currentUserEmail: string | null;
+}) {
+  const { node, onReply, onEdit, onDelete, currentUserEmail } = props;
+
+  const author = node.user?.name || node.userEmail || "user";
+  const avatar = (author[0] || "?").toUpperCase();
+  const isOwner =
+    !!currentUserEmail &&
+    currentUserEmail.toLowerCase() === node.userEmail.toLowerCase();
+
+  const [vote, setVote] = useState<0 | 1 | -1>(0);
+  const [score, setScore] = useState<number>(0);
+
+  const imageUrl = node.imageUrl ?? null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const vKey = `whistle:commentVote:${node.id}`;
+      const sKey = `whistle:commentScore:${node.id}`;
+      const storedV = window.localStorage.getItem(vKey);
+      const storedS = window.localStorage.getItem(sKey);
+
+      if (storedV === "1" || storedV === "-1" || storedV === "0") {
+        setVote(storedV === "1" ? 1 : storedV === "-1" ? -1 : 0);
+      }
+      if (storedS !== null && !Number.isNaN(Number(storedS))) {
+        setScore(Number(storedS));
+      }
+    } catch {
+      // ignore
+    }
+  }, [node.id]);
+
+  const handleCommentVote = (next: 1 | -1) => {
+    const prev = vote;
+    const newVote = prev === next ? 0 : next;
+
+    setVote(newVote);
+    setScore((prevScore) => {
+      const updated = prevScore + (newVote - prev);
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(
+            `whistle:commentVote:${node.id}`,
+            String(newVote)
+          );
+          window.localStorage.setItem(
+            `whistle:commentScore:${node.id}`,
+            String(updated)
+          );
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  };
+
+  const hasText = (node.content ?? "").toString().trim().length > 0;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 10,
+        alignItems: "flex-start",
+      }}
+    >
+      {/* Avatar */}
+      <div
+        style={{
+          width: 24,
+          height: 24,
+          borderRadius: "999px",
+          background: "#22C55E26",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10,
+          color: "#BBF7D0",
+          flexShrink: 0,
+        }}
+      >
+        {avatar}
+      </div>
+
+      {/* Comment vote column */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4,
+          marginTop: 2,
+          flexShrink: 0,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => handleCommentVote(1)}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 5,
+            border: "none",
+            background:
+              vote === 1 ? "#22C55E" : "rgba(148,163,184,0.18)",
+            color: vote === 1 ? "#020817" : "#9CA3AF",
+            cursor: "pointer",
+          }}
+        />
+        <div
+          style={{
+            minWidth: 20,
+            textAlign: "center",
+            fontSize: 9,
+            fontWeight: 600,
+            color: score >= 0 ? "#22C55E" : "#F97316",
+          }}
+        >
+          {score}
+        </div>
+        <button
+          type="button"
+          onClick={() => handleCommentVote(-1)}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 5,
+            border: "none",
+            background:
+              vote === -1 ? "#F97316" : "rgba(148,163,184,0.18)",
+            color: vote === -1 ? "#020817" : "#9CA3AF",
+            cursor: "pointer",
+          }}
+        />
+      </div>
+
+      {/* Comment bubble */}
+      <div
+        style={{
+          flex: 1,
+          borderRadius: 10,
+          background: "transparent",
+          border: "1px solid rgba(31,41,55,0.7)",
+          padding: "8px 10px 6px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 6,
+            fontSize: 10,
+            color: "#9CA3AF",
+            marginBottom: 2,
+          }}
+        >
+          <span
+            style={{
+              fontWeight: 600,
+              color: "#F9FAFB",
+            }}
+          >
+            {author}
+          </span>
+          <span>{new Date(node.createdAt).toLocaleString()}</span>
+        </div>
+
+        {hasText && (
+          <div
+            style={{
+              marginTop: 2,
+              fontSize: 13,
+              color: "#D1D5DB",
+              whiteSpace: "pre-wrap",
+              lineHeight: 1.5,
+            }}
+          >
+            {node.content}
+          </div>
+        )}
+
+        {imageUrl && (
+          <div
+            style={{
+              marginTop: hasText ? 8 : 2,
+              maxWidth: 260,
+            }}
+          >
+            <div
+              style={{
+                borderRadius: 18,
+                padding: 4,
+                background:
+                  "linear-gradient(135deg,#22C55E,#0EA5E9,#1D4ED8)",
+              }}
+            >
+              <div
+                style={{
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  backgroundColor: "#020817",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt="Comment media"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    display: "block",
+                    objectFit: "cover",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div
+          style={{
+            marginTop: 5,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            fontSize: 10,
+          }}
+        >
+          <ActionPill label="Reply" onClick={() => onReply(node.id)} />
+          {isOwner && (
+            <>
+              <ActionPill
+                label="Edit"
+                onClick={() => onEdit(node.id, node.content)}
+              />
+              <ActionPill
+                label="Delete"
+                danger
+                onClick={() => onDelete(node.id)}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionPill(props: {
+  label: string;
+  danger?: boolean;
+  onClick?: () => void;
+}) {
+  const { label, danger, onClick } = props;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "2px 8px",
+        borderRadius: 999,
+        border: danger
+          ? "1px solid rgba(248,113,113,0.9)"
+          : "1px solid rgba(148,163,184,0.45)",
+        background: "transparent",
+        color: danger ? "#FCA5A5" : "#9CA3AF",
+        fontSize: 9,
+        cursor: onClick ? "pointer" : "default",
+      }}
+    >
+      {label}
     </button>
   );
 }
 
-/* ================= COMMENTS ================= */
-type CommentNode = {
-  id: string;
-  content: string;
-  userEmail: string | null;
-  userName?: string | null;
-  createdAt?: string;
-  parentId?: string | null;
-  children?: CommentNode[];
-  replies?: CommentNode[];
-};
+export default PostPage;
 
-function normalizeNode(n: CommentNode): CommentNode {
-  const kids = (n.children ?? n.replies ?? []).map(normalizeNode);
-  return { ...n, children: kids };
-}
-function normalizeTree(nodes?: CommentNode[]): CommentNode[] {
-  return (nodes ?? []).map(normalizeNode);
-}
-const getChildren = (n: CommentNode) => n.children ?? [];
 
-async function apiFetchComments(postId: string): Promise<CommentNode[]> {
-  let res = await fetch(`/api/posts/${postId}/comments`, { cache: 'no-store', credentials: 'same-origin' });
-  if (!res.ok) {
-    res = await fetch(`/api/comments?postId=${encodeURIComponent(postId)}`, { cache: 'no-store', credentials: 'same-origin' });
-  }
-  if (!res.ok) return [];
-  const data = await safeJson<any>(res);
-  const list: CommentNode[] = Array.isArray(data) ? data : data?.items ?? data?.tree ?? data?.comments ?? [];
-  return normalizeTree(list);
-}
-async function apiCreate(postId: string, content: string, parentId?: string) {
-  const payload = parentId ? { content, parentId } : { content };
-  let res = await fetch(`/api/posts/${postId}/comments`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    res = await fetch(`/api/comments`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ postId, ...payload }),
-    });
-  }
-  if (!res.ok) throw new Error(`Failed to post comment (${res.status})`);
-}
-async function apiEdit(postId: string, id: string, content: string) {
-  let res = await fetch(`/api/posts/${postId}/comments`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-http-method-override': 'PATCH' }, credentials: 'same-origin', body: JSON.stringify({ id, content }),
-  });
-  if (!res.ok) {
-    res = await fetch(`/api/comments`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ id, content }),
-    });
-  }
-  if (!res.ok) throw new Error(`Failed to edit comment (${res.status})`);
-}
-async function apiDelete(postId: string, id: string) {
-  let res = await fetch(`/api/posts/${postId}/comments`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-http-method-override': 'DELETE' }, credentials: 'same-origin', body: JSON.stringify({ id }),
-  });
-  if (!res.ok) {
-    res = await fetch(`/api/comments`, {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ id }),
-    });
-  }
-  if (!res.ok) throw new Error(`Failed to delete comment (${res.status})`);
-}
-
-/* ------- COMMENT SECTION -------- */
-function CommentSectionInline({ postId, confirm, notify }: {
-  postId: string;
-  confirm: (m: string, t?: DialogTone, confirmLabel?: string, cancelLabel?: string) => Promise<boolean>;
-  notify: (m: string, t?: DialogTone, cLabel?: string) => Promise<void>;
-}) {
-  const { data: session } = useSession();
-  const me = useMemo(() => (session?.user?.email || '').trim().toLowerCase(), [session?.user?.email]);
-
-  const [tree, setTree] = useState<CommentNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [composer, setComposer] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr(null);
-    try { setTree(await apiFetchComments(postId)); }
-    catch (e: any) { setErr(e?.message ?? 'Failed to load comments'); }
-    finally { setLoading(false); }
-  }, [postId]);
-
-  useEffect(() => { if (postId) load(); }, [postId, load]);
-
-  const sendRoot = async () => {
-    const text = composer.trim(); if (!text) return;
-    setComposer('');
-    try { await apiCreate(postId, text); await load(); }
-    catch (e: any) { setComposer(text); notify(e?.message || 'Could not post comment.', 'default'); }
-  };
-
-  return (
-    <section>
-      <div>
-        <textarea className="whp whp-editor" value={composer} onChange={(e) => setComposer(e.target.value)} placeholder="Write a comment…" rows={3} />
-        <div className="mt-2 flex items-center justify-end">
-          <button className="chip" onClick={sendRoot}><span aria-hidden>{ICON.comment}</span><span>Add a comment</span></button>
-        </div>
-      </div>
-
-      {loading && <div className="whp-subtle mt-3">Loading comments…</div>}
-      {err && <div className="mt-3" style={{ color: '#fecaca' }}>{err}</div>}
-
-      <div className="mt-5 space-y-5">
-        {tree.filter((c) => !c.parentId).map((c) => (
-          <CommentCard
-            key={c.id}
-            node={c}
-            me={me}
-            postId={postId}
-            onRefresh={load}
-            confirm={confirm}
-            notify={notify}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CommentCard({
-  node, me, postId, onRefresh, confirm, notify,
-}: {
-  node: CommentNode;
-  me: string;
-  postId: string;
-  onRefresh: () => Promise<void> | void;
-  confirm: (m: string, t?: DialogTone, confirmLabel?: string, cancelLabel?: string) => Promise<boolean>;
-  notify: (m: string, t?: DialogTone, cLabel?: string) => Promise<void>;
-}) {
-  const isOwner = !!node.userEmail && node.userEmail.toLowerCase() === me;
-
-  const [isReplying, setIsReplying] = useState(false);
-  const [replyValue, setReplyValue] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(node.content);
-
-  /* Per-comment local like/dislike (NO save) */
-  const [cVoted, setCVoted] = useState<'up' | 'down' | null>(null);
-  const [cUp, setCUp] = useState(0);
-  const [cDown, setCDown] = useState(0);
-
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem(`whistle:c-vote:${node.id}`);
-      setCVoted(v === 'up' || v === 'down' ? (v as 'up' | 'down') : null);
-      setCUp(Math.max(0, Number(localStorage.getItem(`whistle:c-count:${node.id}:up`) || '0')));
-      setCDown(Math.max(0, Number(localStorage.getItem(`whistle:c-count:${node.id}:down`) || '0')));
-    } catch {}
-  }, [node.id]);
-
-  const persistCounts = (up: number, down: number) => {
-    setCUp(up); setCDown(down);
-    try {
-      localStorage.setItem(`whistle:c-count:${node.id}:up`, String(Math.max(0, up|0)));
-      localStorage.setItem(`whistle:c-count:${node.id}:down`, String(Math.max(0, down|0)));
-    } catch {}
-  };
-
-  const voteComment = (val: 1 | -1) => {
-    const desired: 'up' | 'down' | null =
-      (cVoted === 'up' && val === 1) ? null :
-      (cVoted === 'down' && val === -1) ? null :
-      (val === 1 ? 'up' : 'down');
-
-    if (desired === cVoted) return;
-
-    let up = cUp, down = cDown;
-    if (cVoted === null && desired === 'up') up += 1;
-    else if (cVoted === null && desired === 'down') down += 1;
-    else if (cVoted === 'up' && desired === null) up = Math.max(0, up - 1);
-    else if (cVoted === 'down' && desired === null) down = Math.max(0, down - 1);
-    else if (cVoted === 'up' && desired === 'down') { up = Math.max(0, up - 1); down += 1; }
-    else if (cVoted === 'down' && desired === 'up') { down = Math.max(0, down - 1); up += 1; }
-
-    setCVoted(desired);
-    try { desired ? localStorage.setItem(`whistle:c-vote:${node.id}`, desired) : localStorage.removeItem(`whistle:c-vote:${node.id}`); } catch {}
-    persistCounts(up, down);
-  };
-
-  const commitReply = async () => {
-    const text = replyValue.trim(); if (!text) return;
-    setReplyValue('');
-    try { await apiCreate(postId, text, node.id); setIsReplying(false); await onRefresh(); }
-    catch (e:any) { setReplyValue(text); notify(e?.message || 'Could not add reply.', 'default'); }
-  };
-
-  const commitEdit = async () => {
-    const text = editValue.trim(); if (!text) return;
-    try { await apiEdit(postId, node.id, text); setIsEditing(false); await onRefresh(); }
-    catch (e:any) { notify(e?.message || 'Could not save edit.', 'default'); }
-  };
-
-  const commitDelete = async () => {
-    const ok = await confirm('Delete this comment?', 'danger', 'Delete', 'Cancel');
-    if (!ok) return;
-    try { await apiDelete(postId, node.id); await onRefresh(); }
-    catch (e:any) { notify(e?.message || 'Could not delete comment.', 'default'); }
-  };
-
-  const initials = (node.userName || node.userEmail || 'U').trim().slice(0, 1).toUpperCase() || 'U';
-  const timestamp = node.createdAt ? new Date(node.createdAt).toLocaleString() : '';
-
-  return (
-    <div>
-      <div className="whp-row">
-        <div style={{ width:28, height:28, borderRadius:9999, background:'#22C55E', color:'#0b1220', fontWeight:800, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
-          {initials}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="whp-meta">
-            <span className="whp-username">{node.userName || node.userEmail || 'User'}</span>
-            {timestamp && (<><span className="whp-dot">•</span><span className="whp-time">{timestamp}</span></>)}
-          </div>
-
-          {!isEditing ? (
-            <p style={{ marginTop: 6, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{node.content}</p>
-          ) : (
-            <div style={{ marginTop: 8 }}>
-              <textarea className="whp whp-editor" value={editValue} onChange={(e) => setEditValue(e.target.value)} rows={3} />
-              <div className="mt-2 flex items-center gap: 4px; flex-wrap: wrap">
-                <button className="chip" onClick={commitEdit}><span aria-hidden>{ICON.edit}</span><span>Save</span></button>
-                <button className="chip" onClick={() => { setIsEditing(false); setEditValue(node.content); }}><span aria-hidden>✖️</span><span>Cancel</span></button>
-              </div>
-            </div>
-          )}
-
-          {/* Comment action row — chips like the homepage (no Save) */}
-          <div className="mt-2 flex items-center gap-4 flex-wrap">
-            <button className={`chip${cVoted === 'up' ? ' active' : ''}`} onClick={() => voteComment(+1)}>
-              <span aria-hidden>{ICON.like}</span><span>Like</span>
-            </button>
-            <button className={`chip${cVoted === 'down' ? ' active' : ''}`} onClick={() => voteComment(-1)}>
-              <span aria-hidden>{ICON.dislike}</span><span>Dislike</span>
-            </button>
-
-            <button className="chip" onClick={() => setIsReplying((v) => !v)}><span aria-hidden>{ICON.reply}</span><span>Reply</span></button>
-
-            {isOwner && (
-              <>
-                <button className="chip" onClick={() => setIsEditing((v) => !v)}><span aria-hidden>{ICON.edit}</span><span>Edit</span></button>
-                <button className="chip" onClick={commitDelete}><span aria-hidden>{ICON.del}</span><span>Delete</span></button>
-              </>
-            )}
-
-            <span className="meta-pill" style={{ marginLeft: 'auto' }} title="Comment likes">{ICON.like} {cUp}</span>
-            <span className="meta-pill" title="Comment dislikes">{ICON.dislike} {cDown}</span>
-          </div>
-
-          {getChildren(node).length > 0 && (
-            <div className="whp-thread mt-3">
-              {getChildren(node).map((child) => (
-                <CommentCard
-                  key={child.id}
-                  node={child}
-                  me={me}
-                  postId={postId}
-                  onRefresh={onRefresh}
-                  confirm={confirm}
-                  notify={notify}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}

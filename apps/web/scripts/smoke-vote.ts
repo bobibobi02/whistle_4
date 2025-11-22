@@ -1,4 +1,4 @@
-// apps/web/scripts/smoke-vote.ts
+﻿// apps/web/scripts/smoke-vote.ts
 //
 // End-to-end vote flow against your running Next dev server.
 // Requires you to be logged in; provide your browser cookie via COOKIE env var.
@@ -12,7 +12,7 @@
 // cmd.exe example:
 //   set BASE_URL=http://localhost:3000 && set TEST_POST_ID=<<REAL-POST-ID>> && set COOKIE=next-auth.session-token=<<REAL_TOKEN>> && npx tsx scripts/smoke-vote.ts
 //
-// How to get the token: in your app (while logged in), open DevTools → Application/Storage → Cookies,
+// How to get the token: in your app (while logged in), open DevTools Р Р†РІ РІв„ў Application/Storage Р Р†РІ РІв„ў Cookies,
 // copy the *entire* value for `next-auth.session-token`. If you also have `next-auth.csrf-token`, you can
 // include it too, but the session token is the key.
 //
@@ -25,22 +25,22 @@ const COOKIE = process.env.COOKIE || '';
 const POST_ID = process.env.TEST_POST_ID || '';
 
 if (!POST_ID || POST_ID === 'PUT-YOUR-POST-ID-HERE' || POST_ID.length < 8) {
-  console.error('❌ TEST_POST_ID must be set to a REAL post id from your app (copy it from the post URL).');
+  console.error('Р Р†РЎСљР Р‰ TEST_POST_ID must be set to a REAL post id from your app (copy it from the post URL).');
   process.exit(1);
 }
 if (!COOKIE || /PASTE_TOKEN_HERE/i.test(COOKIE)) {
-  console.error('❌ COOKIE must contain a REAL next-auth session cookie, e.g.:');
+  console.error('Р Р†РЎСљР Р‰ COOKIE must contain a REAL next-auth session cookie, e.g.:');
   console.error('   COOKIE="next-auth.session-token=eyJhbGciOi..."');
-  console.error('   (Copy from DevTools → Application → Cookies while logged in.)');
+  console.error('   (Copy from DevTools Р Р†РІ РІв„ў Application Р Р†РІ РІв„ў Cookies while logged in.)');
   process.exit(1);
 }
 
 async function assert(name: string, fn: () => Promise<any>) {
   try {
     await fn();
-    console.log(`✅ ${name}`);
+    console.log(`Р Р†РЎС™РІВ¦ ${name}`);
   } catch (e: any) {
-    console.error(`❌ ${name}`);
+    console.error(`Р Р†РЎСљР Р‰ ${name}`);
     console.error(e?.stack || e?.message || e);
     process.exitCode = 1;
   }

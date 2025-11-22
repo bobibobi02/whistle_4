@@ -1,4 +1,4 @@
-// apps/web/src/components/Navbar.tsx
+﻿// apps/web/src/components/Navbar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -109,11 +109,11 @@ export function Navbar() {
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+            {theme === 'dark' ? ' Dark' : ' Light'}
           </button>
 
           {status === 'loading' ? (
-            <span className="link" aria-hidden style={{ opacity: 0.5 }}>…</span>
+            <span className="link" aria-hidden style={{ opacity: 0.5 }}></span>
           ) : status === 'authenticated' ? (
             <>
               <Link href="/profile" className="link">Profile</Link>
@@ -137,7 +137,7 @@ export function Navbar() {
                 onClick={() => setAuthOpen(v => !v)}
                 title="Open authentication menu"
               >
-                Login / Sign up ▾
+                Login / Sign up 
               </button>
 
               {authOpen && (
@@ -198,3 +198,4 @@ export function Navbar() {
     </nav>
   );
 }
+

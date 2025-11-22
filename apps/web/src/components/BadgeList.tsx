@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 export default function BadgeList({ userId }: { userId: string }) {

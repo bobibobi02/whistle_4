@@ -1,4 +1,4 @@
-declare module "swr";
+﻿declare module "swr";
 declare module "react-markdown";
 declare module "recharts";
 declare module "@stripe/stripe-js";

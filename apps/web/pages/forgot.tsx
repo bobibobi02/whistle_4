@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
       if (!res.ok || data.ok === false) throw new Error(data.error || 'Request failed');
       setDone(true);
       if (data.resetUrl) setDevResetUrl(data.resetUrl); // Dev helper (shows when allowed by server)
-      if (data.smtp) setSmtp(data.smtp as SmtpDebug);   // ← show small debug line if server allowed it
+      if (data.smtp) setSmtp(data.smtp as SmtpDebug);   //   show small debug line if server allowed it
     } catch (e: any) {
       setError(e?.message || 'Something went wrong');
     } finally {
@@ -71,8 +71,8 @@ export default function ForgotPasswordPage() {
     if (!smtp) return null;
     const color = smtp.sent ? '#9FE6B2' : '#FCA5A5';
     const text = smtp.sent
-      ? 'SMTP: sent ✓ (check your Mailtrap inbox)'
-      : `SMTP: not sent — ${smtp.reason || 'unknown'}`;
+      ? 'SMTP: sent  (check your Mailtrap inbox)'
+      : `SMTP: not sent  ${smtp.reason || 'unknown'}`;
     return (
       <div style={{ fontSize: 12, color, opacity: 0.9 }}>
         {text}
@@ -88,13 +88,13 @@ export default function ForgotPasswordPage() {
         {done ? (
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={pillStyle}>
-              If an account with that email exists, we’ve sent a reset link.
+              If an account with that email exists, weve sent a reset link.
             </div>
 
             {/* Tiny debug line (only shown if API returned it, e.g., when SHOW_SMTP_DEBUG=true) */}
             <DebugLine smtp={smtp} />
 
-            {/* Dev helper block – wraps long URL nicely */}
+            {/* Dev helper block  wraps long URL nicely */}
             {devResetUrl && (
               <div style={{ fontSize: 14, color: '#98a6ad', display: 'grid', gap: 8 }}>
                 <div style={{ opacity: 0.9 }}>Dev helper link:</div>
@@ -181,7 +181,7 @@ export default function ForgotPasswordPage() {
                 disabled={busy || !email}
                 style={{ opacity: busy || !email ? 0.7 : 1 }}
               >
-                {busy ? 'Sending…' : 'Send reset link'}
+                {busy ? 'Sending' : 'Send reset link'}
               </button>
               <Link
                 href="/login"
@@ -197,3 +197,4 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
+

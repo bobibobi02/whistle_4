@@ -1,4 +1,4 @@
-// apps/web/pages/create-subforum.tsx
+﻿// apps/web/pages/create-subforum.tsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 
@@ -7,7 +7,7 @@ async function readJsonSafe(res: Response): Promise<any> {
   try {
     return text ? JSON.parse(text) : {};
   } catch {
-    // Not JSON — likely an HTML error/redirect
+    // Not JSON  likely an HTML error/redirect
     return { error: `Unexpected response (${res.status} ${res.statusText})`, raw: text.slice(0, 200) };
   }
 }
@@ -46,7 +46,7 @@ export default function CreatePost() {
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError("Image must be ≤ 10MB.");
+      setError("Image must be  10MB.");
       return;
     }
 
@@ -156,7 +156,7 @@ export default function CreatePost() {
 
         <div className="form-row">
           <label htmlFor="subforum" className="label">
-            Loop <span className="label-optional">— optional</span>
+            Loop <span className="label-optional"> optional</span>
           </label>
           <input
             id="subforum"
@@ -165,11 +165,11 @@ export default function CreatePost() {
             value={subforum}
             onChange={(e) => setSubforum(e.target.value)}
           />
-          <div className="helper">A short loop name like “general”, “tech”, etc.</div>
+          <div className="helper">A short loop name like general, tech, etc.</div>
         </div>
 
         <div className="form-row">
-          <label className="label">Image <span className="label-optional">— optional</span></label>
+          <label className="label">Image <span className="label-optional"> optional</span></label>
           <div className="file-control">
             <input
               id="post-image"
@@ -196,10 +196,11 @@ export default function CreatePost() {
 
         <div className="actions">
           <button className="btn-solid" type="submit" disabled={submitting}>
-            {submitting ? "Posting…" : "Post"}
+            {submitting ? "Posting" : "Post"}
           </button>
         </div>
       </form>
     </main>
   );
 }
+

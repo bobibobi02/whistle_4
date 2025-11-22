@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useSession } from 'next-auth/react';
-import { useInfinitePosts, type Post as RawPost } from '@/hooks/useInfinitePosts';
+import { useInfinitePosts} from '@/hooks/useInfinitePosts';
 
 /* ---------- Helpers ---------- */
 type VoteDir = 'up' | 'down' | null;
@@ -132,7 +132,7 @@ async function fetchFeedPage(cursor: string | null) {
   const items = rawList.map(normalizeRow).filter(Boolean) as FeedPost[];
   const nextCursor = (json as any).nextCursor ?? null;
 
-  return { items: items as unknown as RawPost[], nextCursor };
+  return { items: items as unknown as any[], nextCursor };
 }
 
 /* ---------- POST helpers (vote/save/share) ---------- */
@@ -170,9 +170,11 @@ export default function FeedPage() {
   const { data: session } = useSession();
 
   // hook-driven pagination (stable loadMore inside)
-  const { posts, hasMore, loading, cursor, loadMore, reset, setPosts } = useInfinitePosts(fetchFeedPage);
+  const { items, loading, ended, cursor, loadMore, reset, setSentinel } = useInfinitePosts({ fetchPage: fetchFeedPage });
+const posts = items;
+const hasMore = !ended;
 
-  // рџ”’ Always work with a safe array
+  //         Always work with a safe array
   const safePosts: FeedPost[] = useMemo(
     () => (Array.isArray(posts) ? (posts as unknown as FeedPost[]) : []),
     [posts]
@@ -222,7 +224,7 @@ export default function FeedPage() {
   }, [safePosts]);
 
   // Initial load
-  useEffect(() => { loadMore(true); }, [loadMore]);
+  useEffect(() => { loadMore(); }, [loadMore]);
 
   // Observe sentinel to load more (stable callback, no re-installs per render)
   useEffect(() => {
@@ -347,7 +349,7 @@ export default function FeedPage() {
   /* ---------- Render ---------- */
   return (
     <>
-      <Head><title>Whistle вЂ” Feed</title></Head>
+      <Head><title>Whistle          Feed</title></Head>
 
       <main className="feed-wrap">
         <header style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -356,7 +358,7 @@ export default function FeedPage() {
         </header>
 
         <ul className="feed-list" aria-live="polite">
-          {safe(Array.isArray(posts) ? (posts as any[]) : []).map((post) => {
+          {(Array.isArray(posts) ? (posts as any[]) : []).map((post) => {
             const displayName = post.user?.name || 'user';
             const voted = voteMap[post.id] ?? null;
             const saved = savedMap[post.id] ?? !!post.saved;
@@ -367,7 +369,7 @@ export default function FeedPage() {
                   {/* header */}
                   <div className="post-head">
                     <span className="post-avatar" aria-hidden>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {}
                       <img
                         src={post.avatarUrl || '/icons/whistle-glow-512.png'}
                         alt=""
@@ -378,7 +380,7 @@ export default function FeedPage() {
                       />
                     </span>
                     <span className="post-user">{displayName}</span>
-                    <span className="post-time">вЂў {timeAgo(post.timestamp)}</span>
+                    <span className="post-time">        {timeAgo(post.timestamp)}</span>
                   </div>
 
                   {/* title */}
@@ -422,7 +424,7 @@ export default function FeedPage() {
                             boxShadow: '0 10px 24px rgba(0,0,0,0.35)',
                           }}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {}
                           <img
                             src={post.mediaUrl}
                             alt=""
@@ -444,7 +446,7 @@ export default function FeedPage() {
                       aria-label="Like"
                       style={{ borderColor: voted === 'up' ? BRAND : undefined, color: voted === 'up' ? BRAND : undefined }}
                     >
-                      <span aria-hidden>вќ¤пёЏ</span><span>Like</span>
+                      <span aria-hidden>            </span><span>Like</span>
                     </button>
 
                     <button
@@ -453,7 +455,7 @@ export default function FeedPage() {
                       title="Dislike"
                       aria-label="Dislike"
                     >
-                      <span aria-hidden>рџ’”</span><span>Dislike</span>
+                      <span aria-hidden>       </span><span>Dislike</span>
                     </button>
 
                     <Link
@@ -463,11 +465,11 @@ export default function FeedPage() {
                       aria-label="Comments"
                       style={{ textDecoration: 'none' }}
                     >
-                      <span aria-hidden>рџ’¬</span><span>Comments</span>
+                      <span aria-hidden>      </span><span>Comments</span>
                     </Link>
 
                     <button className="chip" onClick={() => share(post.id)} title="Share" aria-label="Share">
-                      <span aria-hidden>рџ”—</span><span>Share</span>
+                      <span aria-hidden>       </span><span>Share</span>
                     </button>
 
                     <button
@@ -476,11 +478,11 @@ export default function FeedPage() {
                       title={saved ? 'Saved' : 'Save'}
                       aria-label={saved ? 'Unsave' : 'Save'}
                     >
-                      <span aria-hidden>рџ”–</span><span>{saved ? 'Saved' : 'Save'}</span>
+                      <span aria-hidden>       </span><span>{saved ? 'Saved' : 'Save'}</span>
                     </button>
 
                     <span className="meta-pill" style={{ marginLeft: 'auto' }}>
-                      вќ¤пёЏ {getScore(post)} вЂў рџ’¬ {post.commentsCount}
+                                   {getScore(post)}                {post.commentsCount}
                     </span>
                   </div>
                 </article>
@@ -492,9 +494,9 @@ export default function FeedPage() {
         {/* sentinel + fixed-height status row */}
         <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
         <div style={{ height: 36, display: 'grid', placeItems: 'center', opacity: 0.9 }}>
-          {loading && hasMore && <div className="small-muted">LoadingвЂ¦</div>}
+          {loading && hasMore && <div className="small-muted">Loading       </div>}
           {!loading && !hasMore && safePosts.length > 0 && (
-            <div className="small-muted" style={{ opacity: 0.75 }}>YouвЂ™ve reached the end</div>
+            <div className="small-muted" style={{ opacity: 0.75 }}>You       ve reached the end</div>
           )}
         </div>
       </main>

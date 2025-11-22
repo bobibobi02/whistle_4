@@ -1,4 +1,4 @@
-// apps/web/pages/api/auth/reset/confirm.ts
+﻿// apps/web/pages/api/auth/reset/confirm.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prismadb';

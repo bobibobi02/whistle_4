@@ -1,4 +1,4 @@
-import { BigQuery } from '@google-cloud/bigquery';
+﻿import { BigQuery } from '@google-cloud/bigquery';
 
 const bigquery = new BigQuery();
 
