@@ -11,3 +11,9 @@ prisma/*.bak*
 **/*.bak_mojifix*
 **/*.bak_fix*
 
+
+# never commit prisma backups
+prisma/migrations.old-*/
+prisma/migrations.bak-*/
+*.bak-*
+
