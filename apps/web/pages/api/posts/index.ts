@@ -83,7 +83,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if ((createData as any).body != null && (createData as any).content == null) {
         (createData as any).content = (createData as any).body;
       }
-      delete (createData as any).body;
+      delete (createData as any).body;
+      delete (createData as any).userId;
+
       // Ensure DB user exists for this session (Neon may not have User row yet)
       const sessionEmail = (session?.user as any)?.email;
       if (sessionEmail) {
@@ -98,7 +100,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         (createData as any).user       = { connect: { id: dbUser.id } };
-        (createData as any).userId     = dbUser.id;
         (createData as any).userEmail  = sessionEmail;
         (createData as any).userName   = dbUser.name ?? (session?.user as any)?.name ?? null;
       }
