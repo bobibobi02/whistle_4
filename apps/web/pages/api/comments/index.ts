@@ -1,4 +1,4 @@
-﻿import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 
 import prisma from "@/lib/prismadb";
@@ -24,6 +24,42 @@ function parseBodyJson(
     // ignore
   }
   return null;
+  if (req.method === "DELETE") {
+    const id = (req.query.id as string) || (req.body as any)?.id;
+    if (!id) {
+      res.status(400).json({ error: "Missing id" });
+      return;
+    }
+
+    const session = await getServerSession(req, res, authOptions);
+    const email = (session?.user as any)?.email ?? null;
+
+    if (!email) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const comment = await prisma.comment.findUnique({ where: { id } });
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: comment.postId },
+      select: { userEmail: true },
+    });
+
+    if (comment.userEmail !== email && post?.userEmail !== email) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    await prisma.comment.delete({ where: { id } });
+    res.status(200).json({ ok: true });
+    return;
+  }
+
 }
 
 export default async function handler(
@@ -57,6 +93,42 @@ export default async function handler(
 
   res.setHeader("Allow", ["GET", "POST"]);
   return res.status(405).end(`Method ${req.method} Not Allowed`);
+  if (req.method === "DELETE") {
+    const id = (req.query.id as string) || (req.body as any)?.id;
+    if (!id) {
+      res.status(400).json({ error: "Missing id" });
+      return;
+    }
+
+    const session = await getServerSession(req, res, authOptions);
+    const email = (session?.user as any)?.email ?? null;
+
+    if (!email) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const comment = await prisma.comment.findUnique({ where: { id } });
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: comment.postId },
+      select: { userEmail: true },
+    });
+
+    if (comment.userEmail !== email && post?.userEmail !== email) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    await prisma.comment.delete({ where: { id } });
+    res.status(200).json({ ok: true });
+    return;
+  }
+
 }
 
 async function handlePost(
@@ -173,4 +245,40 @@ async function handlePost(
     console.error("UPDATE comment via /api/comments error:", e);
     return res.status(500).json({ error: "Failed to update comment" });
   }
+  if (req.method === "DELETE") {
+    const id = (req.query.id as string) || (req.body as any)?.id;
+    if (!id) {
+      res.status(400).json({ error: "Missing id" });
+      return;
+    }
+
+    const session = await getServerSession(req, res, authOptions);
+    const email = (session?.user as any)?.email ?? null;
+
+    if (!email) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const comment = await prisma.comment.findUnique({ where: { id } });
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: comment.postId },
+      select: { userEmail: true },
+    });
+
+    if (comment.userEmail !== email && post?.userEmail !== email) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    await prisma.comment.delete({ where: { id } });
+    res.status(200).json({ ok: true });
+    return;
+  }
+
 }
