@@ -1,4 +1,4 @@
-﻿import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
 import { PrismaClient } from "@prisma/client";
@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const createData: any = {
         title: cleanTitle,
-        body: textBody,
+        content: textBody,
         mediaUrl: mainMediaUrl,
         imageUrls: normalizedImages,
         user: {
@@ -79,7 +79,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       };
 
-      const post = await prisma.post.create({
+            // Back-compat: schema uses content; older clients still send body
+      if ((createData as any).body != null && (createData as any).content == null) {
+        (createData as any).content = (createData as any).body;
+      }
+      delete (createData as any).body;
+      // Ensure DB user exists for this session (Neon may not have User row yet)
+      const sessionEmail = (session?.user as any)?.email;
+      if (sessionEmail) {
+        const dbUser = await prisma.user.upsert({
+          where: { email: sessionEmail },
+          update: {},
+          create: {
+            email: sessionEmail,
+            name: (session?.user as any)?.name ?? null,
+            image: (session?.user as any)?.image ?? null,
+          },
+        });
+
+        (createData as any).user       = { connect: { id: dbUser.id } };
+        (createData as any).userId     = dbUser.id;
+        (createData as any).userEmail  = sessionEmail;
+        (createData as any).userName   = dbUser.name ?? (session?.user as any)?.name ?? null;
+      }
+
+const post = await prisma.post.create({
         data: createData,
         include: { user: true },
       });
