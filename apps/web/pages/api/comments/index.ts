@@ -66,7 +66,50 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method === "GET") {
+  
+  // FRONT-DOOR DELETE: ensure DELETE is handled before any router/returns
+  if (req.method === "DELETE") {
+    const id = (req.query.id as string) || "";
+    if (!id) {
+      res.status(400).json({ error: "Missing id" });
+      return;
+    }
+
+    const session = await getServerSession(req, res, authOptions);
+    const email = (session?.user as any)?.email ?? null;
+    if (!email) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      select: { id: true, userEmail: true, postId: true },
+    });
+
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: comment.postId },
+      select: { userEmail: true },
+    });
+
+    const isOwner = comment.userEmail && comment.userEmail === email;
+    const isPostOwner = post?.userEmail && post.userEmail === email;
+
+    if (!isOwner && !isPostOwner) {
+      res.status(403).json({ error: "Not allowed" });
+      return;
+    }
+
+    await prisma.comment.delete({ where: { id } });
+    res.status(200).json({ ok: true });
+    return;
+  }
+if (req.method === "GET") {
     const postId = String(req.query.postId || "");
     if (!postId) {
       return res.status(400).json({ error: "Missing postId" });
