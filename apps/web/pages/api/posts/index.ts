@@ -208,8 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const take = parseNumber(limit, 12);
 
       const orderBy =
-        sort === "new"
-          ? [{ createdAt: "desc" as const }]
+        sort === "new" || sort === "latest" ? [{ createdAt: "desc" as const }]
           : sort === "old"
           ? [{ createdAt: "asc" as const }]
           : [
