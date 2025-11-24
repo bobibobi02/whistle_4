@@ -11,7 +11,7 @@ type CommentPayload = {
   postId?: string;
 };
 
-function parseBodyJson(
+async function parseBodyJson(
   raw: string | null | undefined
 ): null | { t?: string; img?: string } {
   if (!raw) return null;
