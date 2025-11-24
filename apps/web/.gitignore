@@ -17,3 +17,10 @@ prisma/migrations.old-*/
 prisma/migrations.bak-*/
 *.bak-*
 
+
+# --- local patch helpers (never commit) ---
+patch-*.ps1
+apply-*.ps1
+
+# --- safe sql copies (never commit) ---
+prisma/migrations/*/migration.safe.sql
