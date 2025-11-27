@@ -183,7 +183,7 @@ export default function ProfilePage() {
     };
   }, [refreshSavedIds]);
 
-  // NEW: merge server-saved IDs into LocalStorage (only when logged in)
+  // merge server-saved IDs into LocalStorage (only when logged in)
   useEffect(() => {
     let canceled = false;
     (async () => {
@@ -201,7 +201,6 @@ export default function ProfilePage() {
 
   function unsave(id: string) {
     try {
-      // clear all common key variants
       const variants = [
         `whistle:save:${id}`, `whistle:saved:${id}`,
         `whistle-save-${id}`, `save:${id}`, `saved:${id}`
@@ -211,7 +210,6 @@ export default function ProfilePage() {
       setSavedIds((cur) => cur.filter((x) => x !== id));
       window.dispatchEvent(new Event('whistle:posts-mutated'));
       try { localStorage.setItem('whistle:posts-mutated', String(Date.now())); } catch {}
-      // best-effort server unsave
       fetch('/api/saved', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -220,6 +218,41 @@ export default function ProfilePage() {
       }).catch(()=>{});
     } catch {}
   }
+
+  const toggleSaveMine = useCallback(async (id: string) => {
+    if (!id) return;
+    const currentlySaved = savedIds.includes(id);
+    const next = !currentlySaved;
+
+    try {
+      const variants = [
+        `whistle:save:${id}`, `whistle:saved:${id}`,
+        `whistle-save-${id}`, `save:${id}`, `saved:${id}`
+      ];
+      variants.forEach((k) => localStorage.setItem(k, next ? '1' : '0'));
+      window.dispatchEvent(new Event('whistle:posts-mutated'));
+      try {
+        localStorage.setItem('whistle:posts-mutated', String(Date.now()));
+      } catch {}
+    } catch {}
+
+    setSavedIds((cur) => {
+      const has = cur.includes(id);
+      if (next) return has ? cur : [...cur, id];
+      return cur.filter((x) => x !== id);
+    });
+
+    try {
+      await fetch('/api/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ postId: id, action: 'toggle' }),
+      });
+    } catch {
+      // best-effort only
+    }
+  }, [savedIds]);
 
   /* mine: fetch + filter */
   useEffect(() => {
@@ -383,17 +416,29 @@ export default function ProfilePage() {
                       const likes = num(p.likesCount) || num(p.likes) ||
                         (Array.isArray(p.votes) ? p.votes.filter((v: any) => v?.value > 0).length : 0);
                       const comments = num(p.commentsCount) || (Array.isArray(p.comments) ? p.comments.length : 0);
+                      const isSaved = savedIds.includes(String(p.id));
 
                       return (
                         <li key={p.id}>
                           <article className="post-card">
                             <div className="post-head">
                               <span className="post-avatar">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src="/icons/whistle-glow-512.png" alt="" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain' }} />
                               </span>
                               <span className="post-user">{userName}</span>
                               <span className="post-time">• {timeAgo(createdAt)}</span>
-                              <Link href={`/post/${p.id}`} className="view-link" style={{ marginLeft: 'auto' }}>View post →</Link>
+                              <button
+                                type="button"
+                                onClick={() => toggleSaveMine(String(p.id))}
+                                className="chip"
+                                style={{ marginLeft: 'auto', marginRight: 8 }}
+                                title={isSaved ? 'Saved' : 'Save'}
+                                aria-label={isSaved ? 'Unsave post' : 'Save post'}
+                              >
+                                {isSaved ? 'Saved' : 'Save'}
+                              </button>
+                              <Link href={`/post/${p.id}`} className="view-link">View post →</Link>
                             </div>
                             {p.title ? <div style={{ fontWeight: 700, marginBottom: 6 }}>{p.title}</div> : null}
                             {p.content ? <div className="post-content">{p.content}</div> : null}

@@ -1,10 +1,11 @@
-﻿// apps/web/pages/saved.tsx
+// apps/web/pages/saved.tsx
 import { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { PrismaClient } from "@prisma/client";
+import { useCallback, useEffect, useState } from "react";
 
 // ---- Prisma singleton (safe in Next dev)
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
@@ -76,6 +77,19 @@ function timeAgo(when?: string | Date | null) {
   return new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-v, u);
 }
 
+const LS_SAVE_PREFIX = "whistle:save:"; // value: "1" | "0" | "true" | "false"
+const SAVE_EVENTS = ["whistle:posts-mutated", "whistle:saves-mutated"];
+const TRUE = new Set(["1", "true", "yes", "y", "on", "t"]);
+
+function readSavedLocal(id: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const v = window.localStorage.getItem(LS_SAVE_PREFIX + id);
+    return TRUE.has(String(v ?? "").toLowerCase().trim());
+  } catch {
+    return false;
+  }
+}
 export default function SavedPage({
   posts,
   userName,
@@ -86,7 +100,103 @@ export default function SavedPage({
   const prettyName =
     userName?.trim() || (posts[0]?.user?.email ? posts[0].user.email.split("@")[0] : "Your");
 
-  const getLikes = (p: AnyPost) =>
+  const [savedMap, setSavedMap] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const p of posts || []) {
+      if (p && p.id) {
+        initial[p.id] = true;
+      }
+    }
+    return initial;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!posts?.length) return;
+
+    const sync = () => {
+      setSavedMap((prev) => {
+        const next: Record<string, boolean> = { ...prev };
+        for (const p of posts) {
+          if (!p || !p.id) continue;
+          const fromLocal = readSavedLocal(p.id);
+          next[p.id] =
+            fromLocal || !!(p as any).saved || (prev[p.id] ?? true);
+        }
+        return next;
+      });
+    };
+
+    sync();
+
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key) return;
+      if (e.key.startsWith(LS_SAVE_PREFIX) || SAVE_EVENTS.includes(e.key)) {
+        sync();
+      }
+    };
+
+    const onCustom = () => sync();
+
+    window.addEventListener("storage", onStorage);
+    for (const ev of SAVE_EVENTS) {
+      window.addEventListener(ev, onCustom as EventListener);
+    }
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      for (const ev of SAVE_EVENTS) {
+        window.removeEventListener(ev, onCustom as EventListener);
+      }
+    };
+  }, [posts]);
+
+  const toggleSave = useCallback(
+    async (id: string) => {
+      if (!id) return;
+      const current = savedMap[id] ?? true;
+      const next = !current;
+
+      setSavedMap((m) => ({ ...m, [id]: next }));
+
+      try {
+        const res = await fetch("/api/saved", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ postId: id, action: "toggle" }),
+        });
+
+        if (res.ok) {
+          const data = await res.json().catch(() => ({} as any));
+          if (typeof data.saved === "boolean") {
+            setSavedMap((m) => ({ ...m, [id]: !!data.saved }));
+          }
+        }
+
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(
+              LS_SAVE_PREFIX + id,
+              next ? "1" : "0"
+            );
+            for (const ev of SAVE_EVENTS) {
+              window.dispatchEvent(new Event(ev));
+              window.localStorage.setItem(ev, String(Date.now()));
+            }
+          } catch {
+            // ignore
+          }
+        }
+      } catch (e) {
+        setSavedMap((m) => ({ ...m, [id]: current }));
+        console.error(e);
+        alert("Save/Unsave failed. Please try again.");
+      }
+    },
+    [savedMap]
+  );
+const getLikes = (p: AnyPost) =>
     typeof p.likesCount === "number"
       ? p.likesCount
       : typeof p.likes === "number"
@@ -157,6 +267,14 @@ export default function SavedPage({
                     <span className="meta-pill" title="Comments">
                        <strong>{getComments(p)}</strong>
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSave(p.id)}
+                      className="meta-pill"
+                      title={savedMap[p.id] ? "Saved" : "Save"}
+                    >
+                      {savedMap[p.id] ? "Saved" : "Save"}
+                    </button>
                     <Link href={`/post/${p.id}`} className="view-link">
                       View post  
                     </Link>

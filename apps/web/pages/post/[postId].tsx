@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
@@ -41,6 +41,7 @@ type Post = {
   image?: string | null;
   mediaUrl?: string | null;
   user?: User | null;
+  saved?: boolean;
 };
 
 /* ========= Comment body encoder / decoder ========= */
@@ -124,7 +125,23 @@ const getAllImages = (post: Post | null): string[] => {
   return Array.from(urls);
 };
 
-/* ========= Vote helpers (post) ========= */
+/* ========= Save helpers ========= */
+
+const LS_SAVE_PREFIX = "whistle:save:"; // value: "1" | "0" | "true" | "false"
+const SAVE_EVENTS = ["whistle:posts-mutated", "whistle:saves-mutated"];
+const TRUE = new Set(["1", "true", "yes", "y", "on", "t"]);
+
+function readSavedLocal(id: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const v = window.localStorage.getItem(LS_SAVE_PREFIX + id);
+    return TRUE.has(String(v ?? "").toLowerCase().trim());
+  } catch {
+    return false;
+  }
+}
+
+/* ========= Vote helpers ========= */
 
 async function fetchPostScore(postId: string): Promise<number | null> {
   try {
@@ -266,6 +283,9 @@ const PostPage: React.FC = () => {
   const [score, setScore] = useState<number | null>(null);
   const [myVote, setMyVote] = useState<0 | 1 | -1>(0);
 
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   const [composer, setComposer] = useState("");
   const [mode, setMode] =
     useState<null | { type: "reply" | "edit"; commentId: string }>(null);
@@ -278,11 +298,9 @@ const PostPage: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // delete overlay state (comments)
   const [deleteTargetCommentId, setDeleteTargetCommentId] = useState<string | null>(null);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
 
-  // delete overlay state (post)
   const [showPostDelete, setShowPostDelete] = useState(false);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
 
@@ -299,16 +317,70 @@ const PostPage: React.FC = () => {
       setComments(c);
       setScore(s);
       setMyVote(0);
+
+      if (p) {
+        let initial = false;
+        try {
+          initial = readSavedLocal(p.id);
+        } catch {}
+        if (!initial && (p as any).saved) {
+          initial = true;
+        }
+        setSaved(initial);
+      } else {
+        setSaved(false);
+      }
+
       setLoading(false);
     })();
   }, [postId]);
+
+  useEffect(() => {
+    if (!post?.id) return;
+    if (typeof window === "undefined") return;
+
+    const sync = () => {
+      try {
+        setSaved(readSavedLocal(post.id));
+      } catch {
+        // ignore
+      }
+    };
+
+    sync();
+
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key) return;
+      if (e.key.startsWith(LS_SAVE_PREFIX) || SAVE_EVENTS.includes(e.key)) {
+        sync();
+      }
+    };
+
+    const onCustom = () => sync();
+
+    window.addEventListener("storage", onStorage);
+    for (const ev of SAVE_EVENTS) {
+      window.addEventListener(ev, onCustom as EventListener);
+    }
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      for (const ev of SAVE_EVENTS) {
+        window.removeEventListener(ev, onCustom as EventListener);
+      }
+    };
+  }, [post?.id]);
 
   const tree = useMemo(() => buildTree(comments), [comments]);
 
   const refresh = async () => {
     if (!postId) return;
-    setComments(await fetchComments(postId));
-    setScore(await fetchPostScore(postId));
+    const [c, s] = await Promise.all([
+      fetchComments(postId),
+      fetchPostScore(postId),
+    ]);
+    setComments(c);
+    setScore(s);
   };
 
   const focusComposer = () => {
@@ -420,7 +492,6 @@ const PostPage: React.FC = () => {
     await refresh();
   };
 
-  // open overlay for comment delete
   const askDeleteComment = (id: string) => {
     setDeleteTargetCommentId(id);
   };
@@ -442,7 +513,6 @@ const PostPage: React.FC = () => {
     setDeleteTargetCommentId(null);
   };
 
-  // post delete
   const canDeletePost = !!currentUserEmail;
 
   const askDeletePost = () => {
@@ -489,6 +559,52 @@ const PostPage: React.FC = () => {
     }
   };
 
+  const handleToggleSave = async () => {
+    if (!post) return;
+    const id = post.id;
+    const next = !saved;
+
+    setSaved(next);
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ postId: id, action: "toggle" }),
+      });
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({} as any));
+        if (typeof data.saved === "boolean") {
+          setSaved(!!data.saved);
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(
+            LS_SAVE_PREFIX + id,
+            next ? "1" : "0"
+          );
+          for (const ev of SAVE_EVENTS) {
+            window.dispatchEvent(new Event(ev));
+            window.localStorage.setItem(ev, String(Date.now()));
+          }
+        } catch {
+          // ignore
+        }
+      }
+    } catch (e) {
+      setSaved(!next);
+      alert("Save/Unsave failed. Please try again.");
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!postId) return <div style={{ padding: 24 }}>Missing post id.</div>;
   if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
   if (!post) return <div style={{ padding: 24 }}>Post not found.</div>;
@@ -522,7 +638,6 @@ const PostPage: React.FC = () => {
           color: "#E5E7EB",
         }}
       >
-        {/* Back link */}
         <div style={{ marginBottom: 16 }}>
           <Link
             href="/"
@@ -536,7 +651,6 @@ const PostPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Post row */}
         <article
           style={{
             display: "grid",
@@ -547,7 +661,6 @@ const PostPage: React.FC = () => {
             borderBottom: "1px solid rgba(31,41,55,0.9)",
           }}
         >
-          {/* Vote column */}
           <div
             style={{
               display: "flex",
@@ -598,7 +711,6 @@ const PostPage: React.FC = () => {
             />
           </div>
 
-          {/* Post content column */}
           <div>
             <header
               style={{
@@ -640,6 +752,35 @@ const PostPage: React.FC = () => {
                     <span style={{ color: "#E5E7EB", fontWeight: 500 }}>
                       {authorName}
                     </span>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={handleToggleSave}
+                      disabled={saving}
+                      style={{
+                        padding: "4px 12px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(148,163,184,0.7)",
+                        background: saved
+                          ? "rgba(34,197,94,0.15)"
+                          : "transparent",
+                        color: saved ? "#22C55E" : "#9CA3AF",
+                        fontSize: 11,
+                        fontWeight: 500,
+                        cursor: saving ? "default" : "pointer",
+                        opacity: saving ? 0.7 : 1,
+                      }}
+                    >
+                      {saved ? "Saved" : "Save"}
+                    </button>
                   </div>
                 </div>
 
@@ -724,7 +865,6 @@ const PostPage: React.FC = () => {
           </div>
         </article>
 
-        {/* Composer */}
         <section style={{ marginBottom: 22 }}>
           <textarea
             id="comment-composer"
@@ -868,7 +1008,6 @@ const PostPage: React.FC = () => {
           />
         </section>
 
-        {/* Comments */}
         <section>
           <h2
             style={{
@@ -891,7 +1030,6 @@ const PostPage: React.FC = () => {
         </section>
       </main>
 
-      {/* Post delete overlay */}
       {showPostDelete && (
         <ConfirmDeleteOverlay
           title="Delete post"
@@ -902,7 +1040,6 @@ const PostPage: React.FC = () => {
         />
       )}
 
-      {/* Comment delete overlay */}
       {deleteTargetCommentId && (
         <ConfirmDeleteOverlay
           title="Delete comment"
@@ -1042,7 +1179,6 @@ function CommentItem(props: {
         alignItems: "flex-start",
       }}
     >
-      {/* Avatar */}
       <div
         style={{
           width: 24,
@@ -1060,7 +1196,6 @@ function CommentItem(props: {
         {avatar}
       </div>
 
-      {/* Comment vote column */}
       <div
         style={{
           display: "flex",
@@ -1112,7 +1247,6 @@ function CommentItem(props: {
         />
       </div>
 
-      {/* Comment bubble */}
       <div
         style={{
           flex: 1,
@@ -1252,5 +1386,3 @@ function ActionPill(props: {
 }
 
 export default PostPage;
-
-
