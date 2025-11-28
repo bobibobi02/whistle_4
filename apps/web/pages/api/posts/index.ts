@@ -1,5 +1,3 @@
-// AUTO-REPLACED by PowerShell full-fix block (Whistle)
-// Posts API: supports create + feed + filters + back-compat body->content
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
@@ -24,8 +22,18 @@ function parseWindow(windowStr: string | undefined) {
   return undefined;
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getServerSession(req, res, authOptions);
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  // Never let getServerSession crash the whole route
+  let session: any = null;
+  try {
+    session = await getServerSession(req, res, authOptions);
+  } catch (err: any) {
+    console.error("getServerSession error in /api/posts", err);
+    session = null;
+  }
 
   // =============== POST: create post ===============
   if (req.method === "POST") {
@@ -74,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         imageUrls,
         subforum: {
           connectOrCreate: {
-            where: { name: loopName }, // Subforum.name is unique
+            where: { name: loopName },
             create: {
               name: loopName,
               title: loopName,
@@ -94,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       delete createData.body;
       delete createData.userId;
 
-      // Ensure DB user exists for this session (Neon may not have User row yet)
+      // Ensure DB user exists for this session
       const sessionEmail = (session?.user as any)?.email;
       if (sessionEmail) {
         const dbUser = await prisma.user.upsert({
@@ -110,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // connect relation, do NOT set userId scalar
         createData.user = { connect: { id: dbUser.id } };
 
-        // denormalized fields (your schema has these as optional)
+        // denormalized fields (optional columns)
         createData.userEmail = sessionEmail;
         createData.userName =
           dbUser.name ?? (session?.user as any)?.name ?? null;
@@ -146,11 +154,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user,
         loop,
         subforum,
-        // allow cache-buster param without using it
-        t,
+        t, // cache-buster, unused
       } = req.query as Record<string, string | undefined>;
 
-      // fetch single post by id
+      // Single post
       if (id) {
         const post = await prisma.post.findUnique({
           where: { id },
@@ -208,7 +215,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const take = parseNumber(limit, 12);
 
       const orderBy =
-        sort === "new" || sort === "latest" ? [{ createdAt: "desc" as const }]
+        sort === "new" || sort === "latest"
+          ? [{ createdAt: "desc" as const }]
           : sort === "old"
           ? [{ createdAt: "asc" as const }]
           : [
