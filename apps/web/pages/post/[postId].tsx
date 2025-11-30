@@ -466,30 +466,42 @@ const PostPage: React.FC = () => {
     }
   };
 
+      const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
   const submit = async () => {
     if (!postId) return;
     const rawBody = composer.trim();
 
     if (!rawBody && !commentImageUrl) return;
+    if (isSubmittingComment) return;
 
-    const bodyToSend = JSON.stringify({
-      t: rawBody,
-      img: commentImageUrl || null,
-    });
+    setIsSubmittingComment(true);
 
-    const payload: {
-      postId: string;
-      body: string;
-      id?: string;
-      parentId?: string;
-    } = { postId, body: bodyToSend };
+    try {
+      const bodyToSend = JSON.stringify({
+        t: rawBody,
+        img: commentImageUrl || null,
+      });
 
-    if (mode?.type === "edit") payload.id = mode.commentId;
-    if (mode?.type === "reply") payload.parentId = mode.commentId;
+      const payload: {
+        postId: string;
+        body: string;
+        id?: string;
+        parentId?: string;
+      } = { postId, body: bodyToSend };
 
-    await saveComment(payload);
-    resetComposer();
-    await refresh();
+      if (mode?.type === "edit") payload.id = mode.commentId;
+      if (mode?.type === "reply") payload.parentId = mode.commentId;
+
+      await saveComment(payload);
+      resetComposer();
+      await refresh();
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   const askDeleteComment = (id: string) => {
