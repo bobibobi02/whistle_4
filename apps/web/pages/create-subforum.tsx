@@ -1,4 +1,4 @@
-﻿// apps/web/pages/create-subforum.tsx
+// apps/web/pages/create-subforum.tsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 
@@ -177,7 +177,7 @@ export default function CreatePost() {
               type="file"
               accept="image/*"
               className="input-file"
-              onChange={handlePickImage}
+              onChange={(e) => { handlePickImage(e); e.target.value = ""; }}
             />
             <label htmlFor="post-image" className="file-trigger">
               <span>Choose image</span>

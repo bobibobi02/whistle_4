@@ -1,4 +1,4 @@
-﻿// apps/web/pages/_app.tsx
+// apps/web/pages/_app.tsx
 import type { AppProps } from 'next/app';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import Head from 'next/head';
@@ -186,6 +186,27 @@ function Navbar() {
 }
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+  // Reset all file inputs after change so choosing the same file twice still fires onChange
+  useEffect(() => {
+    const handler = (event: any) => {
+      const target = event.target as HTMLInputElement | null;
+      if (target && target.tagName === "INPUT" && target.type === "file") {
+        // Let React's onChange run first, then clear the value
+        setTimeout(() => {
+          try {
+            target.value = "";
+          } catch {
+            // ignore
+          }
+        }, 0);
+      }
+    };
+
+    document.addEventListener("change", handler, true);
+    return () => {
+      document.removeEventListener("change", handler, true);
+    };
+  }, []);
   return (
     <SessionProvider session={session}>
       <DialogProvider>

@@ -1,4 +1,4 @@
-﻿import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 
@@ -246,7 +246,7 @@ export default function CreatePost() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleImageChange}
+                  onChange={(e) => { handleImageChange(e); e.target.value = ""; }}
                 />
               </label>
 

@@ -25,13 +25,23 @@ function pickFirstFile(files: Files): File | undefined {
     return Array.isArray(value) ? value[0] : value;
   };
 
-  // Try common field names first, then fall back to “whatever is there”
-  return (
+  // Try common field names first
+  const named =
     pick("file") ||
     pick("image") ||
-    pick("media") ||
-    (Object.values(files)[0] as File | undefined)
-  );
+    pick("media");
+
+  if (named) return named;
+
+  // Fallback – first value in the files object
+  const first = Object.values(files)[0] as File | File[] | undefined;
+  if (!first) return undefined;
+
+  if (Array.isArray(first)) {
+    return first[0];
+  }
+
+  return first;
 }
 
 async function parseUpload(req: NextApiRequest): Promise<File> {
@@ -72,7 +82,7 @@ export default async function handler(
     const buffer = await fs.readFile(filepath);
     const mime = file.mimetype || "image/png";
 
-    // Store as data URL in the DB – works on Vercel and locally
+    // Store as data URL in the DB - works on Vercel and locally
     const base64 = buffer.toString("base64");
     const dataUrl = `data:${mime};base64,${base64}`;
 
