@@ -1,34 +1,36 @@
-﻿// apps/web/pages/404.tsx
-import Link from "next/link";
+﻿import Link from "next/link";
 
-export default function NotFound() {
+export default function NotFoundPage() {
   return (
-    <main style={{ minHeight: "70vh", display: "grid", placeItems: "center", padding: "40px" }}>
-      <div
-        style={{
-          maxWidth: 640,
-          width: "100%",
-          borderRadius: 16,
-          padding: 24,
-          background: "linear-gradient(180deg, rgba(21,27,34,0.75), rgba(16,21,27,0.78))",
-          outline: "1px solid rgba(120,160,180,0.08)",
-          boxShadow: "0 8px 20px rgba(0,0,0,.25)",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.2, color: "#E6EEF2" }}>Page not found</h1>
-        <p style={{ marginTop: 8, color: "#9FB2BA" }}>
-          The page youre looking for doesnt exist or was moved.
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+      <div className="max-w-xl text-center space-y-6">
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          Whistle
         </p>
-        <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-          <Link href="/" className="btn-solid">
+        <h1 className="text-4xl font-semibold">Page not found</h1>
+        <p className="text-sm text-slate-400">
+          This whistle doesn&apos;t exist or may have been deleted.
+        </p>
+
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/"
+            className="px-4 py-2 rounded-full bg-emerald-500 text-slate-950 text-sm font-medium hover:bg-emerald-400 transition"
+          >
             Go home
           </Link>
-          <Link href="/feed" className="chip">
-            Browse feed
+          <Link
+            href="/feed"
+            className="px-4 py-2 rounded-full border border-slate-600 text-slate-100 text-sm hover:border-slate-400 transition"
+          >
+            Open feed
           </Link>
         </div>
+
+        <p className="text-[11px] text-slate-500">
+          If you followed a link from somewhere inside Whistle, it might be old or broken.
+        </p>
       </div>
-    </main>
+    </div>
   );
 }
-

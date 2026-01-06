@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+﻿import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
 import { PrismaClient } from "@prisma/client";
@@ -22,6 +22,29 @@ function parseWindow(windowStr: string | undefined) {
   return undefined;
 }
 
+// Helper to shrink large API payloads by limiting array sizes in responses.
+function shrinkArraysForApi(value: any, maxItems: number = 3): any {
+  // Keep Date objects as-is so timestamps remain valid
+  if (value instanceof Date) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, maxItems).map((v) => shrinkArraysForApi(v, maxItems));
+  }
+  if (value && typeof value === "object") {
+    const out: any = {};
+    for (const key of Object.keys(value as any)) {
+      const v = (value as any)[key];
+      if (Array.isArray(v)) {
+        out[key] = v.slice(0, maxItems).map((x) => shrinkArraysForApi(x, maxItems));
+      } else {
+        out[key] = shrinkArraysForApi(v, maxItems);
+      }
+    }
+    return out;
+  }
+  return value;
+}
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -212,7 +235,8 @@ export default async function handler(
       const since = parseWindow(window);
       if (since) where.createdAt = { gte: since };
 
-      const take = parseNumber(limit, 12);
+      const rawTake = parseNumber(limit, 12);
+      const take = Math.min(rawTake, 50);
 
       const orderBy =
         sort === "new" || sort === "latest"
@@ -235,7 +259,7 @@ export default async function handler(
         },
       });
 
-      res.status(200).json(posts);
+      res.status(200).json(shrinkArraysForApi(posts, 3));
       return;
     } catch (err: any) {
       console.error("GET /api/posts error", err);

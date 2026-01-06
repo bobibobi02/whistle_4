@@ -10,8 +10,8 @@
  * - Only allows GET.
  */
 
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient, Prisma } from '@prisma/client';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -27,16 +27,16 @@ function parseWindow(input: string | string[] | undefined): number {
   const unit = m[2].toLowerCase();
   if (Number.isNaN(value) || value <= 0) return 7 * 24 * 60 * 60 * 1000;
 
-  return unit === 'h' ? value * 60 * 60 * 1000 : value * 24 * 60 * 60 * 1000;
+  return unit === "h" ? value * 60 * 60 * 1000 : value * 24 * 60 * 60 * 1000;
 }
 
 function isMissingColumn(e: unknown, table: string, column: string) {
   // P2022 => "The column `main.<Table>.<column>` does not exist"
   return (
-    typeof e === 'object' &&
+    typeof e === "object" &&
     e !== null &&
-    (e as any).code === 'P2022' &&
-    String((e as any).meta?.column || '').endsWith(`${table}.${column}`)
+    (e as any).code === "P2022" &&
+    String((e as any).meta?.column || "").endsWith(`${table}.${column}`)
   );
 }
 
@@ -49,7 +49,9 @@ type PopularPost = {
   subforumName: string | null;
   createdAt: string;
   updatedAt: string;
-  imageUrls: string[]; // stored as JSON array (TEXT in SQLite)
+  imageUrls: string[];
+  likesCount: number;
+  commentsCount: number;
   counts: {
     comments: number;
     votes: number;
@@ -57,11 +59,14 @@ type PopularPost = {
   score: number;
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== "GET") {
     // Keep method guard consistent across the app
-    res.setHeader('Allow', 'GET');
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    res.setHeader("Allow", "GET");
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   const limit = Math.max(1, Math.min(50, Number(req.query.limit ?? 12)));
@@ -107,25 +112,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     rows = await prisma.post.findMany({
       where,
-      orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
+      orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
       take: 500, // pull a decent pool, then score + slice
       select: { ...baseSelect, imageUrls: true },
     });
   } catch (e) {
-    if (isMissingColumn(e, 'Post', 'imageUrls')) {
+    if (isMissingColumn(e, "Post", "imageUrls")) {
       console.warn(
-        '[Whistle] Warning: Post.imageUrls column is missing in the connected SQLite file. ' +
-          'Falling back to imageUrls: []. Verify DATABASE_URL points to the DB you migrated.'
+        "[Whistle] Warning: Post.imageUrls column is missing in the connected DB. " +
+          "Falling back to imageUrls: []. Verify DATABASE_URL points to the DB you migrated."
       );
       rows = await prisma.post.findMany({
         where,
-        orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
+        orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
         take: 500,
         select: baseSelect,
       });
     } else {
-      console.error('/api/home/popular unexpected error:', e);
-      return res.status(500).json({ error: 'Internal Server Error' });
+      console.error("/api/home/popular unexpected error:", e);
+      return res.status(500).json({ error: "Internal Server Error" });
     }
   }
 
@@ -137,12 +142,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let imageUrls: string[] = [];
     // We expect imageUrls as JSON array (TEXT in SQLite). Be defensive.
-    if (typeof (r as any).imageUrls !== 'undefined' && (r as any).imageUrls !== null) {
+    if (
+      typeof (r as any).imageUrls !== "undefined" &&
+      (r as any).imageUrls !== null
+    ) {
       try {
         const val = (r as any).imageUrls;
         if (Array.isArray(val)) {
           imageUrls = val as string[];
-        } else if (typeof val === 'string') {
+        } else if (typeof val === "string") {
           const parsed = JSON.parse(val);
           if (Array.isArray(parsed)) imageUrls = parsed as string[];
         }
@@ -161,6 +169,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       imageUrls,
+      likesCount: votes,
+      commentsCount: comments,
       counts: { comments, votes },
       score,
     };
@@ -183,5 +193,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     posts: data,
   });
 }
-
-

@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
-import { indexPost } from '@/lib/meili';
-import { Post } from '@/types'; // ✅ Correct alias usage
+﻿import { useEffect } from 'react';
+import { indexPost } from '../lib/meili';
 
-export default function MeiliInitializer({ post }: { post: Post }) {
+type MeiliPost = any;
+
+
+export default function MeiliInitializer({ post }: { post: MeiliPost }) {
   useEffect(() => {
     if (post) {
       indexPost({

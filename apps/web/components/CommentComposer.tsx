@@ -1,5 +1,5 @@
 ﻿import { useCallback, useState } from "react";
-import { useToast } from "@/components/toast";
+import { useToast } from "./toast";
 
 function makeCallbackUrl() {
   if (typeof window === 'undefined') return '/';

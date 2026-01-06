@@ -1,3 +1,4 @@
+﻿/* eslint-disable @next/next/no-html-link-for-pages */
 // apps/web/pages/_app.tsx
 import type { AppProps } from 'next/app';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
@@ -6,7 +7,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import '../styles/globals.css';
-import ToastProvider from '@/components/toast';
+import ToastProvider from "../components/toast";
 import { DialogProvider } from '@/components/ui/DialogProvider';
 
 /**
@@ -209,6 +210,112 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
   }, []);
   return (
     <SessionProvider session={session}>
+      <Head>
+        <title>Whistle · Public Beta</title>
+        <meta
+          name="description"
+          content="Whistle is a community platform for sharing posts, ideas and discussions in topic-based loops."
+        />
+        <meta name="theme-color" content="#020617" />
+        <meta property="og:site_name" content="Whistle" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Whistle · Public Beta" />
+        <meta
+          property="og:description"
+          content="Whistle is a community platform for sharing posts, ideas and discussions in topic-based loops."
+        />
+        <meta property="og:image" content="/whistle-glow-512.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
+      <div
+        style={{
+          width: "100%",
+          background: "#020617",
+          fontSize: 11,
+          color: "#E5E7EB",
+          display: "flex",
+          justifyContent: "center",
+          padding: "4px 12px",
+        }}
+      >
+      <div
+        style={{
+          width: "100%",
+          background: "#020617",
+          display: "flex",
+          justifyContent: "center",
+          padding: "6px 14px",
+          fontSize: 11,
+          color: "#E5E7EB",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1120,
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              padding: "2px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(34,197,94,0.9)",
+              color: "#BBF7D0",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 0.06,
+              textTransform: "uppercase",
+            }}
+          >
+            Beta
+          </span>
+          <span
+            style={{
+              flex: 1,
+              textAlign: "center",
+              opacity: 0.92,
+              padding: "0 8px",
+            }}
+          >
+            Whistle is currently in public beta. Things may change or break.
+          </span>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 11,
+            }}
+          >
+            <Link
+              href="/about"
+              style={{ color: "#E5E7EB", textDecoration: "none", fontWeight: 500, opacity: 0.9 }}
+            >
+              About
+            </Link>
+            <span>·</span>
+            <Link
+              href="/terms"
+              style={{ color: "#E5E7EB", textDecoration: "none", fontWeight: 500, opacity: 0.9 }}
+            >
+              Terms
+            </Link>
+            <span>·</span>
+            <Link
+              href="/privacy"
+              style={{ color: "#E5E7EB", textDecoration: "none", fontWeight: 500, opacity: 0.9 }}
+            >
+              Privacy
+            </Link>
+          </span>
+        </div>
+      </div>
+      </div>
       <DialogProvider>
         <ToastProvider>
           <Head>
@@ -218,7 +325,79 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
 
           {/* (UI styles kept as-is) */}
           <Navbar />
-          <Component {...pageProps} />
+              <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+      <Component {...pageProps} />
+
+      <footer
+        style={{
+          margin: "24px auto 20px",
+          paddingBottom: 24,
+          maxWidth: 960,
+          fontSize: 11,
+          color: "#9CA3AF",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: "#22C55E",
+            }}
+          />
+          <span>Whistle is in active development.</span>
+        </span>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <Link
+            href="/about"
+            style={{
+              color: "#E5E7EB",
+              textDecoration: "none",
+              opacity: 0.85,
+            }}
+          >
+            About
+          </Link>
+          <Link
+            href="/terms"
+            style={{
+              color: "#E5E7EB",
+              textDecoration: "none",
+              opacity: 0.85,
+            }}
+          >
+            Terms
+          </Link>
+          <Link
+            href="/privacy"
+            style={{
+              color: "#E5E7EB",
+              textDecoration: "none",
+              opacity: 0.85,
+            }}
+          >
+            Privacy
+          </Link>
+        </span>
+      </footer>
+    </div>
         </ToastProvider>
       </DialogProvider>
     </SessionProvider>

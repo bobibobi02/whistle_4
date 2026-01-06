@@ -1,35 +1,36 @@
-﻿// apps/web/pages/500.tsx
-import Link from "next/link";
+﻿import Link from "next/link";
 
-export default function ServerError() {
+export default function ErrorPage() {
   return (
-    <main style={{ minHeight: "70vh", display: "grid", placeItems: "center", padding: "40px" }}>
-      <div
-        style={{
-          maxWidth: 640,
-          width: "100%",
-          borderRadius: 16,
-          padding: 24,
-          background: "linear-gradient(180deg, rgba(21,27,34,0.75), rgba(16,21,27,0.78))",
-          outline: "1px solid rgba(120,160,180,0.08)",
-          boxShadow: "0 8px 20px rgba(0,0,0,.25)",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.2, color: "#E6EEF2" }}>
-          Something went wrong
-        </h1>
-        <p style={{ marginTop: 8, color: "#9FB2BA" }}>
-          An unexpected error occurred. Try again, or head back to the feed.
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+      <div className="max-w-xl text-center space-y-6">
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          Whistle
         </p>
-        <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-          <Link href="/feed" className="btn-solid">
-            Back to feed
-          </Link>
-          <Link href="/" className="chip">
-            Home
+        <h1 className="text-4xl font-semibold">Something went wrong</h1>
+        <p className="text-sm text-slate-400">
+          We hit an error while loading this page. The team has been notified.
+        </p>
+
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-full bg-emerald-500 text-slate-950 text-sm font-medium hover:bg-emerald-400 transition"
+          >
+            Try again
+          </button>
+          <Link
+            href="/"
+            className="px-4 py-2 rounded-full border border-slate-600 text-slate-100 text-sm hover:border-slate-400 transition"
+          >
+            Go home
           </Link>
         </div>
+
+        <p className="text-[11px] text-slate-500">
+          If this keeps happening, please try again later.
+        </p>
       </div>
-    </main>
+    </div>
   );
 }

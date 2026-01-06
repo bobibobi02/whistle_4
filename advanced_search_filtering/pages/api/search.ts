@@ -1,5 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { searchPosts } from '@/lib/meili';
+﻿import type { NextApiRequest, NextApiResponse } from 'next';
+import { searchPosts } from '../../lib/meili';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { q, subforum, author, dateFrom, dateTo, limit } = req.query;

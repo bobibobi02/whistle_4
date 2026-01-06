@@ -1,38 +1,47 @@
-{
-  "files": [],
-  "references": [
-    {
-      "path": "./apps/web"
-    },
-    {
-      "path": "./apps/mobile/whistle-mobile"
-    }
-  ],
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
-    "noEmit": true,
-    "incremental": true,
-    "module": "esnext",
-    "esModuleInterop": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve"
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+﻿{
+    "files":  [
+
+              ],
+    "references":  [
+                       {
+                           "path":  "./apps/web"
+                       },
+                       {
+                           "path":  "./apps/mobile/whistle-mobile"
+                       }
+                   ],
+    "compilerOptions":  {
+                            "target":  "ES2017",
+                            "lib":  [
+                                        "dom",
+                                        "dom.iterable",
+                                        "esnext"
+                                    ],
+                            "allowJs":  true,
+                            "skipLibCheck":  true,
+                            "strict":  false,
+                            "noEmit":  true,
+                            "incremental":  true,
+                            "module":  "esnext",
+                            "esModuleInterop":  true,
+                            "moduleResolution":  "node",
+                            "resolveJsonModule":  true,
+                            "isolatedModules":  true,
+                            "jsx":  "preserve"
+                        },
+    "include":  [
+                    "next-env.d.ts",
+                    "**/*.ts",
+                    "**/*.tsx"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "advanced_search_filtering",
+                    "apps/mobile",
+                    "api_posts.ts",
+                    "api_subforums.ts",
+                    "api_posts.disabled.ts",
+                    "api_posts.disabled.ts.bak",
+                    "api_subforums.ts.bak"
+                ]
 }

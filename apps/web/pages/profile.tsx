@@ -1,473 +1,439 @@
-'use client';
+﻿// pages/profile.tsx - Whistle profile page (compact cards layout, uses /api/user/profile)
 
-import Head from 'next/head';
-import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import Head from "next/head";
+import type { NextPage } from "next";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
-/* ---------- types / helpers you already had ---------- */
-type CardPost = {
-  id: string;
-  userName: string;
-  content: string | null;
-  mediaUrl?: string | null;
-  createdAt: string;
-  likeCount: number;
-  commentsCount: number;
-};
-
-const TRUE_VALUES = new Set(['1', 'true', 'yes', 'y', 'on', 't']);
-const SAVE_KEY_RX = /^(?:whistle(?::|-))?(?:save|saved)(?::|-)(.+)$/i;
-
-const num = (x: any) => (typeof x === 'number' && !isNaN(x) ? x : 0);
-const timeAgo = (ts?: string) => {
-  try {
-    const d = ts ? new Date(ts) : new Date();
-    const diff = Date.now() - d.getTime();
-    const mins = Math.max(1, Math.round(diff / 60000));
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.round(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.round(hrs / 24);
-    return `${days}d ago`;
-  } catch { return 'just now'; }
-};
-
-function normalizeRow(raw: any): CardPost | null {
-  if (!raw) return null;
-  const id = raw.id ?? raw.postId ?? raw._id;
-  if (!id) return null;
-  const mediaUrl =
-    raw.mediaUrl || raw.media?.url || raw.imageUrl ||
-    (Array.isArray(raw.images) && raw.images[0]?.url) || null;
-
-  const userName =
-    raw.user?.username || raw.username || raw.user?.name || raw.displayName ||
-    (raw.userEmail ? String(raw.userEmail).split('@')[0] : 'user');
-
-  const likeCount =
-    num(raw.likesCount) || num(raw.likes) ||
-    (Array.isArray(raw.votes) ? raw.votes.filter((v: any) => v?.value > 0).length : 0);
-
-  const commentsCount =
-    num(raw.commentsCount) ||
-    (Array.isArray(raw.comments) ? raw.comments.length : (raw._count?.comments ?? 0));
-
-  return {
-    id: String(id),
-    userName,
-    content: raw?.content ?? raw?.text ?? raw?.body ?? null,
-    mediaUrl,
-    createdAt: (raw?.createdAt ?? raw?.created_at ?? new Date().toISOString()) as string,
-    likeCount,
-    commentsCount,
-  };
+interface ProfileUser {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  createdAt?: string | null;
 }
 
-/* Saved IDs from LocalStorage */
-function getSavedIdsFromStorage(): string[] {
-  if (typeof window === 'undefined') return [];
-  const ids: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i) || '';
-    const m = SAVE_KEY_RX.exec(key);
-    if (!m) continue;
-    const val = (localStorage.getItem(key) || '').toLowerCase().trim();
-    if (TRUE_VALUES.has(val)) ids.push(m[1]);
-  }
-  return Array.from(new Set(ids));
+interface ProfileStats {
+  totalKarma?: number | null;
+  postKarma?: number | null;
+  commentKarma?: number | null;
+  postsCount?: number | null;
+  commentsCount?: number | null;
+  achievements?: string[] | null;
 }
 
-/* Server-saved IDs (new) */
-async function fetchServerSavedIds(): Promise<string[]> {
-  try {
-    const r = await fetch('/api/saved', { credentials: 'same-origin' });
-    if (!r.ok) return [];
-    const j = await r.json();
-    return Array.isArray(j?.ids) ? j.ids.map(String) : [];
-  } catch { return []; }
+interface ProfileResponse {
+  user?: ProfileUser | null;
+  stats?: ProfileStats | null;
 }
 
-/* "your posts" helper */
-type AnyPost = Record<string, any>;
-const norm = (s?: string) => (s ?? '').trim().toLowerCase();
-function isMine(p: AnyPost, session: any) {
-  const email = norm(session?.user?.email);
-  const userId = norm((session as any)?.user?.id);
-  const name = norm(session?.user?.name);
-  const emailPrefix = email ? email.split('@')[0] : '';
-  const postEmail = norm(p.userEmail || p.email || p.authorEmail || p.user?.email || p.author?.email);
-  if (email && postEmail && email === postEmail) return true;
-  const postId = norm(p.userId || p.authorId || p.ownerId || p.user?.id || p.author?.id);
-  if (userId && postId && userId === postId) return true;
-  const postUserName = norm(
-    p.username || p.userName || p.displayName || p.user?.username || p.user?.name || p.author?.username || p.author?.name
-  );
-  if (postUserName) {
-    if (name && postUserName === name) return true;
-    if (emailPrefix && postUserName === norm(emailPrefix)) return true;
-  }
-  return false;
-}
-
-/* =================================================
-   Profile
-================================================= */
-type TabKey = 'saved' | 'mine';
-
-export default function ProfilePage() {
-  const { data: session, status } = useSession();
-
-  /* saved */
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [savedPosts, setSavedPosts] = useState<CardPost[] | null>(null);
-  const [savedError, setSavedError] = useState('');
-
-  /* mine */
-  const [allPosts, setAllPosts] = useState<AnyPost[] | null>(null);
-  const [myError, setMyError] = useState('');
-
-  /* tabs */
-  const [activeTab, setActiveTab] = useState<TabKey>(() => {
-    if (typeof window === 'undefined') return 'saved';
-    const t = localStorage.getItem('whistle:profile-tab');
-    return (t === 'mine' || t === 'saved') ? (t as TabKey) : 'saved';
+function formatJoined(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
   });
-  const setTab = useCallback((t: TabKey) => {
-    setActiveTab(t);
-    try { localStorage.setItem('whistle:profile-tab', t); } catch {}
-  }, []);
+}
 
-  /* saved: load */
-  const refreshSavedIds = useCallback(() => setSavedIds(getSavedIdsFromStorage()), []);
-  const loadSaved = useCallback(async (ids: string[]) => {
-    setSavedPosts(null);
-    setSavedError('');
-    if (!ids.length) { setSavedPosts([]); return; }
-    try {
-      const q = encodeURIComponent(ids.join(','));
-      const r = await fetch(`/api/posts?ids=${q}`, { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      const arr: any[] = Array.isArray(data) ? data : (data.posts || data.items || []);
-      const rows = arr.map(normalizeRow).filter(Boolean) as CardPost[];
+const ProfilePage: NextPage = () => {
+  const { data: session, status } = useSession();
+  const [data, setData] = useState<ProfileResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-      // keep Saved order
-      const order = new Map(ids.map((id, i) => [id, i]));
-      rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-
-      setSavedPosts(rows);
-    } catch (e) {
-      console.error('Saved load error:', e);
-      setSavedError('Couldn’t load your saved posts.');
-      setSavedPosts([]);
-    }
-  }, []);
-
-  useEffect(() => { refreshSavedIds(); }, [refreshSavedIds]);
-  useEffect(() => { loadSaved(savedIds); }, [savedIds, loadSaved]);
-
-  // live refresh from other tabs/pages when saving
   useEffect(() => {
-    const onMut = () => refreshSavedIds();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key && (SAVE_KEY_RX.test(e.key) || e.key === 'whistle:posts-mutated')) {
-        refreshSavedIds();
+    if (status === "loading") return;
+
+    if (!session?.user) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/user/profile", {
+          method: "GET",
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load profile: ${res.status}`);
+        }
+
+        const json = (await res.json().catch(() => null)) as ProfileResponse | null;
+        if (!cancelled) {
+          setData(json ?? {});
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err);
+          setError("Could not load profile.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    window.addEventListener('whistle:posts-mutated', onMut as EventListener);
-    window.addEventListener('storage', onStorage);
+
+    void run();
+
     return () => {
-      window.removeEventListener('whistle:posts-mutated', onMut as EventListener);
-      window.removeEventListener('storage', onStorage);
+      cancelled = true;
     };
-  }, [refreshSavedIds]);
+  }, [session?.user, status]);
 
-  // merge server-saved IDs into LocalStorage (only when logged in)
-  useEffect(() => {
-    let canceled = false;
-    (async () => {
-      if (!session?.user?.email) return;
-      const serverIds = await fetchServerSavedIds();
-      if (canceled || !serverIds.length) return;
-      try {
-        serverIds.forEach(id => localStorage.setItem(`whistle:save:${id}`, '1'));
-        window.dispatchEvent(new Event('whistle:posts-mutated'));
-      } catch {}
-      refreshSavedIds();
-    })();
-    return () => { canceled = true; };
-  }, [session, refreshSavedIds]);
+  const user: ProfileUser = {
+    name: data?.user?.name ?? session?.user?.name ?? "",
+    email: data?.user?.email ?? session?.user?.email ?? "",
+    image: data?.user?.image ?? session?.user?.image ?? null,
+    createdAt: data?.user?.createdAt ?? null,
+  };
 
-  function unsave(id: string) {
-    try {
-      const variants = [
-        `whistle:save:${id}`, `whistle:saved:${id}`,
-        `whistle-save-${id}`, `save:${id}`, `saved:${id}`
-      ];
-      variants.forEach(k => localStorage.setItem(k, '0'));
-      setSavedPosts((cur) => (cur ? cur.filter((p) => p.id !== id) : cur));
-      setSavedIds((cur) => cur.filter((x) => x !== id));
-      window.dispatchEvent(new Event('whistle:posts-mutated'));
-      try { localStorage.setItem('whistle:posts-mutated', String(Date.now())); } catch {}
-      fetch('/api/saved', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ postId: id, action: 'unsave' }),
-      }).catch(()=>{});
-    } catch {}
+  const stats: ProfileStats = {
+    totalKarma:
+      data?.stats?.totalKarma ??
+      ((data?.stats?.postKarma ?? 0) + (data?.stats?.commentKarma ?? 0)),
+    postKarma: data?.stats?.postKarma ?? 0,
+    commentKarma: data?.stats?.commentKarma ?? 0,
+    postsCount: data?.stats?.postsCount ?? 0,
+    commentsCount: data?.stats?.commentsCount ?? 0,
+    achievements: data?.stats?.achievements ?? [],
+  };
+
+  const displayName = (user.name || "").trim() || "User";
+  const initial = displayName.charAt(0).toUpperCase() || "U";
+  const joinedText = formatJoined(user.createdAt);
+
+  if (status === "loading") {
+    return (
+      <main className="feed-wrap">
+        <p style={{ color: "#E5E7EB", fontSize: 14 }}>Loading profile…</p>
+      </main>
+    );
   }
 
-  const toggleSaveMine = useCallback(async (id: string) => {
-    if (!id) return;
-    const currentlySaved = savedIds.includes(id);
-    const next = !currentlySaved;
-
-    try {
-      const variants = [
-        `whistle:save:${id}`, `whistle:saved:${id}`,
-        `whistle-save-${id}`, `save:${id}`, `saved:${id}`
-      ];
-      variants.forEach((k) => localStorage.setItem(k, next ? '1' : '0'));
-      window.dispatchEvent(new Event('whistle:posts-mutated'));
-      try {
-        localStorage.setItem('whistle:posts-mutated', String(Date.now()));
-      } catch {}
-    } catch {}
-
-    setSavedIds((cur) => {
-      const has = cur.includes(id);
-      if (next) return has ? cur : [...cur, id];
-      return cur.filter((x) => x !== id);
-    });
-
-    try {
-      await fetch('/api/saved', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ postId: id, action: 'toggle' }),
-      });
-    } catch {
-      // best-effort only
-    }
-  }, [savedIds]);
-
-  /* mine: fetch + filter */
-  useEffect(() => {
-    let canceled = false;
-    (async () => {
-      try {
-        let res = await fetch('/api/posts?user=me');
-        let data: any = res.ok ? await res.json() : undefined;
-        if (!Array.isArray(data) && !Array.isArray(data?.items) && !Array.isArray(data?.posts)) {
-          res = await fetch('/api/posts');
-          if (!res.ok) throw new Error('API error');
-          data = await res.json();
-        }
-        const items: AnyPost[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.items) ? data.items
-          : Array.isArray(data?.posts) ? data.posts
-          : [];
-        if (!canceled) setAllPosts(items);
-      } catch (e) {
-        console.error(e);
-        if (!canceled) { setMyError("Couldn't load posts."); setAllPosts([]); }
-      }
-    })();
-    return () => { canceled = true; };
-  }, []);
-
-  const myPosts = useMemo(
-    () => (!allPosts || !session?.user) ? [] : allPosts.filter((p) => isMine(p, session)),
-    [allPosts, session]
-  );
-
-  const savedCount = savedPosts?.length ?? 0;
-  const mineCount = myPosts.length;
+  if (!session?.user) {
+    return (
+      <main className="feed-wrap">
+        <h1
+          style={{
+            marginBottom: 8,
+            fontWeight: 800,
+            fontSize: "1.3rem",
+            color: "#F9FAFB",
+          }}
+        >
+          Profile
+        </h1>
+        <p style={{ color: "#9CA3AF", fontSize: 14 }}>
+          You need to be logged in to see your profile.
+        </p>
+      </main>
+    );
+  }
 
   return (
     <>
-      <Head><title>Whistle — Profile</title></Head>
-
+      <Head>
+        <title>Whistle · Profile</title>
+      </Head>
       <main className="feed-wrap">
-        <h1 style={{ margin: '8px 0 10px', fontWeight: 900 }}>
-          {session?.user?.name || session?.user?.email?.split('@')[0] || 'Your profile'}
-        </h1>
-
-        {status === 'loading' && <p style={{ color: '#6b7280' }}>Loading session…</p>}
-
-        {status === 'unauthenticated' && (
-          <div className="form-card" style={{ padding: 16 }}>
-            <p style={{ margin: 0, color: '#334155' }}>
-              You&apos;re not signed in. Please{' '}
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); signIn(undefined, { callbackUrl: '/profile' }); }}
-                style={{ color: '#0F5132', fontWeight: 700, textDecoration: 'underline' }}
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: "999px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+              fontSize: 24,
+              background: "#22C55E",
+              color: "#020617",
+              flexShrink: 0,
+            }}
+          >
+            {initial}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1
+              style={{
+                margin: 0,
+                marginBottom: 4,
+                fontWeight: 800,
+                fontSize: "1.3rem",
+                color: "#F9FAFB",
+              }}
+            >
+              {displayName}
+            </h1>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+                fontSize: 13,
+                color: "#9CA3AF",
+              }}
+            >
+              {user.email && <span>{user.email}</span>}
+              {joinedText && (
+                <span>
+                  · Joined <span>{joinedText}</span>
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                color: "#E5E7EB",
+              }}
+            >
+              Total karma:{" "}
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: stats.totalKarma && stats.totalKarma >= 0 ? "#22C55E" : "#F97316",
+                }}
               >
-                log in
-              </a>{' '}
-              to view your profile.
-            </p>
+                {stats.totalKarma ?? 0}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {error && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "8px 12px",
+              borderRadius: 8,
+              background: "rgba(239,68,68,0.12)",
+              color: "#FCA5A5",
+              fontSize: 13,
+            }}
+          >
+            {error}
           </div>
         )}
 
-        {status === 'authenticated' && (
-          <>
-            {/* Tabs bar */}
-            <div className="profile-tabs" role="tablist" aria-label="Profile sections">
-              <button
-                id="tab-saved"
-                className={`tab ${activeTab === 'saved' ? 'active' : ''}`}
-                role="tab"
-                aria-selected={activeTab === 'saved'}
-                aria-controls="panel-saved"
-                onClick={() => setTab('saved')}
-                onKeyDown={(e) => { if (e.key === 'ArrowRight') setTab('mine'); }}
-              >
-                Saved <span className="badge">{savedCount}</span>
-              </button>
-              <button
-                id="tab-mine"
-                className={`tab ${activeTab === 'mine' ? 'active' : ''}`}
-                role="tab"
-                aria-selected={activeTab === 'mine'}
-                aria-controls="panel-mine"
-                onClick={() => setTab('mine')}
-                onKeyDown={(e) => { if (e.key === 'ArrowLeft') setTab('saved'); }}
-              >
-                Your posts <span className="badge">{mineCount}</span>
-              </button>
+        <section
+          aria-label="Karma and activity"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.95)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 0.04,
+                textTransform: "uppercase",
+                color: "#9CA3AF",
+                marginBottom: 4,
+              }}
+            >
+              Post karma
             </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: stats.postKarma && stats.postKarma >= 0 ? "#22C55E" : "#F97316",
+              }}
+            >
+              {stats.postKarma ?? 0}
+            </div>
+          </div>
 
-            {/* Saved */}
-            {activeTab === 'saved' && (
-              <section id="panel-saved" role="tabpanel" aria-labelledby="tab-saved">
-                {savedError && <p style={{ color: '#dc2626', marginTop: 4 }}>{savedError}</p>}
-                {savedPosts === null ? (
-                  <p style={{ color: '#6b7280' }}>Loading your saved posts…</p>
-                ) : savedPosts.length === 0 ? (
-                  <div className="comment-empty">You haven’t saved any posts yet.</div>
-                ) : (
-                  <ul className="feed-list">
-                    {savedPosts.map((p) => (
-                      <li key={p.id}>
-                        <article className="post-card">
-                          <div className="post-head">
-                            <span className="post-avatar">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src="/icons/whistle-glow-512.png" alt="" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain' }} />
-                            </span>
-                            <span className="post-user">{p.userName}</span>
-                            <span className="post-time">• {timeAgo(p.createdAt)}</span>
-                            <button
-                              onClick={() => unsave(p.id)}
-                              className="chip"
-                              style={{ marginLeft: 'auto' }}
-                              title="Remove from saved"
-                              aria-label="Remove from saved"
-                            >
-                              Unsave
-                            </button>
-                          </div>
-                          {p.content && <div className="post-content">{p.content}</div>}
-                          {p.mediaUrl ? (
-                            <div className="feed-media">
-                              <Link href={`/post/${p.id}`} className="feed-media-link" aria-label="Open post">
-                                <div className="feed-media-inner">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={p.mediaUrl} alt="" />
-                                </div>
-                              </Link>
-                            </div>
-                          ) : null}
-                          <div className="post-meta">
-                            <span className="meta-pill" aria-label={`${p.likeCount} likes`} title={`${p.likeCount} likes`}>❤️ {p.likeCount}</span>
-                            <span className="meta-pill" aria-label={`${p.commentsCount} comments`} title={`${p.commentsCount} comments`}>💬 {p.commentsCount}</span>
-                            <Link href={`/post/${p.id}`} className="view-link">View post →</Link>
-                          </div>
-                        </article>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.95)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 0.04,
+                textTransform: "uppercase",
+                color: "#9CA3AF",
+                marginBottom: 4,
+              }}
+            >
+              Comment karma
+            </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color:
+                  stats.commentKarma && stats.commentKarma >= 0 ? "#22C55E" : "#F97316",
+              }}
+            >
+              {stats.commentKarma ?? 0}
+            </div>
+          </div>
 
-            {/* Mine */}
-            {activeTab === 'mine' && (
-              <section id="panel-mine" role="tabpanel" aria-labelledby="tab-mine">
-                {myError && <p style={{ color: '#dc2626' }}>{myError}</p>}
-                {allPosts === null ? (
-                  <p style={{ color: '#6b7280' }}>Loading your posts…</p>
-                ) : myPosts.length === 0 ? (
-                  <div className="comment-empty">You haven’t posted yet.</div>
-                ) : (
-                  <ul className="feed-list">
-                    {myPosts.map((p) => {
-                      const createdAt = p.createdAt || p.timestamp || p.created_at || new Date().toISOString();
-                      const mediaUrl =
-                        p.mediaUrl || p.media?.url || p.imageUrl ||
-                        (Array.isArray(p.images) && p.images[0]?.url) || null;
-                      const userName = p.user?.username || p.username || p.user?.name || p.displayName || 'you';
-                      const likes = num(p.likesCount) || num(p.likes) ||
-                        (Array.isArray(p.votes) ? p.votes.filter((v: any) => v?.value > 0).length : 0);
-                      const comments = num(p.commentsCount) || (Array.isArray(p.comments) ? p.comments.length : 0);
-                      const isSaved = savedIds.includes(String(p.id));
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.95)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 0.04,
+                textTransform: "uppercase",
+                color: "#9CA3AF",
+                marginBottom: 4,
+              }}
+            >
+              Posts
+            </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#E5E7EB",
+              }}
+            >
+              {stats.postsCount ?? 0}
+            </div>
+          </div>
 
-                      return (
-                        <li key={p.id}>
-                          <article className="post-card">
-                            <div className="post-head">
-                              <span className="post-avatar">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src="/icons/whistle-glow-512.png" alt="" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain' }} />
-                              </span>
-                              <span className="post-user">{userName}</span>
-                              <span className="post-time">• {timeAgo(createdAt)}</span>
-                              <button
-                                type="button"
-                                onClick={() => toggleSaveMine(String(p.id))}
-                                className="chip"
-                                style={{ marginLeft: 'auto', marginRight: 8 }}
-                                title={isSaved ? 'Saved' : 'Save'}
-                                aria-label={isSaved ? 'Unsave post' : 'Save post'}
-                              >
-                                {isSaved ? 'Saved' : 'Save'}
-                              </button>
-                              <Link href={`/post/${p.id}`} className="view-link">View post →</Link>
-                            </div>
-                            {p.title ? <div style={{ fontWeight: 700, marginBottom: 6 }}>{p.title}</div> : null}
-                            {p.content ? <div className="post-content">{p.content}</div> : null}
-                            {mediaUrl ? (
-                              <div className="feed-media">
-                                <Link href={`/post/${p.id}`} className="feed-media-link" aria-label="Open post">
-                                  <div className="feed-media-inner">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={mediaUrl} alt="" />
-                                  </div>
-                                </Link>
-                              </div>
-                            ) : null}
-                            <div className="post-meta">
-                              <span className="meta-pill" aria-label={`${likes} likes`} title={`${likes} likes`}>❤️ {likes}</span>
-                              <span className="meta-pill" aria-label={`${comments} comments`} title={`${comments} comments`}>💬 {comments}</span>
-                              <Link href={`/post/${p.id}`} className="view-link">View post →</Link>
-                            </div>
-                          </article>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
-            )}
-          </>
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.95)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 0.04,
+                textTransform: "uppercase",
+                color: "#9CA3AF",
+                marginBottom: 4,
+              }}
+            >
+              Comments
+            </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#E5E7EB",
+              }}
+            >
+              {stats.commentsCount ?? 0}
+            </div>
+          </div>
+        </section>
+
+        <section aria-label="Achievements">
+          <h2
+            style={{
+              margin: 0,
+              marginBottom: 8,
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#F9FAFB",
+            }}
+          >
+            Achievements
+          </h2>
+
+          {stats.achievements && stats.achievements.length > 0 ? (
+            <ul
+              style={{
+                listStyle: "none",
+                padding: 0,
+                margin: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              {stats.achievements.map((ach, idx) => (
+                <li
+                  key={`${ach}-${idx}`}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(148,163,184,0.35)",
+                    background: "rgba(15,23,42,0.95)",
+                    fontSize: 13,
+                    color: "#E5E7EB",
+                  }}
+                >
+                  {ach}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "#9CA3AF",
+              }}
+            >
+              No achievements yet. Keep posting and commenting to unlock them.
+            </p>
+          )}
+        </section>
+
+        {loading && (
+          <p
+            style={{
+              marginTop: 16,
+              fontSize: 12,
+              color: "#6B7280",
+            }}
+          >
+            Refreshing stats…
+          </p>
         )}
       </main>
     </>
   );
-}
+};
+
+export default ProfilePage;

@@ -1,4 +1,4 @@
-// apps/web/pages/create-subforum.tsx
+﻿// apps/web/pages/create-subforum.tsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 
@@ -78,6 +78,7 @@ export default function CreatePost() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setError("");
 
     if (!title.trim() || !content.trim()) {

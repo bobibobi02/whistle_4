@@ -1,77 +1,91 @@
-import React from "react";
+﻿import Link from "next/link";
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10 space-y-6">
-      <h1 className="text-3xl font-bold">Terms of Service</h1>
-      <p className="text-sm text-gray-400">
-        Last updated: {new Date().getFullYear()}
-      </p>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <main className="max-w-3xl mx-auto px-4 py-16 space-y-10">
+        <header className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            Whistle
+          </p>
+          <h1 className="text-3xl md:text-4xl font-semibold">
+            Terms of Use (Beta)
+          </h1>
+          <p className="text-sm text-slate-400">
+            These terms describe how you may use Whistle during the public
+            beta period.
+          </p>
+          <p className="text-[11px] text-amber-400">
+            This is a simple, non-legal summary. Before a full production
+            release, please consult a lawyer and replace this with official
+            Terms of Service.
+          </p>
+        </header>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">1. What is Whistle?</h2>
-        <p>
-          Whistle is a social platform where users can create posts, share
-          opinions, and participate in discussions in different loops
-          (communities). By using Whistle, you agree to these Terms of Service.
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">1. Using Whistle</h2>
+          <p className="text-sm text-slate-300">
+            By accessing or using Whistle, you agree to follow these rules and
+            any additional guidelines shown inside the app. You must only use
+            the service in a lawful way.
+          </p>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">2. Your account</h2>
-        <p>
-          You are responsible for all activity that happens under your account.
-          Do not share your login details with other people and do not use
-          another person&apos;s account without permission.
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">2. Your content</h2>
+          <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>You are responsible for the content you post.</li>
+            <li>
+              Do not post illegal content, spam, or targeted harassment.
+            </li>
+            <li>
+              By posting on Whistle you allow the platform to display and
+              store your content so the service can function.
+            </li>
+          </ul>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">3. Content you post</h2>
-        <p>
-          You are responsible for the content you create and share on Whistle.
-          Do not post illegal content, hate speech, harassment, spam, or any
-          content that violates the rights of other people (including privacy
-          and intellectual property rights).
-        </p>
-        <p>
-          By posting on Whistle, you keep ownership of your content, but you
-          grant us a limited license to store and display it for the purpose of
-          running the service.
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">3. Moderation</h2>
+          <p className="text-sm text-slate-300">
+            Content may be removed and accounts may be limited or suspended if
+            they repeatedly break the rules. See the Moderation &amp; Appeals
+            page for more detail.
+          </p>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">4. Moderation</h2>
-        <p>
-          We may remove content or restrict accounts that violate these terms or
-          applicable law. We are not responsible for user-generated content, but
-          we may act if content is reported as illegal or harmful.
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">4. Beta status</h2>
+          <p className="text-sm text-slate-300">
+            Whistle is provided &quot;as is&quot; during the beta. Features,
+            performance and availability may change without notice.
+          </p>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">5. Service availability</h2>
-        <p>
-          We do not guarantee that Whistle will always be available or free from
-          errors. We may change or stop parts of the service at any time.
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">5. Changes</h2>
+          <p className="text-sm text-slate-300">
+            These terms may be updated. When they change, we will update this
+            page. Continued use of the service after changes means you accept
+            the updated terms.
+          </p>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">6. Contact</h2>
-        <p>
-          If you have questions about these terms, you can contact the Whistle
-          team at{" "}
-          <a
-            href="mailto:contact@example.com"
-            className="text-green-400 underline"
+        <footer className="pt-4 border-t border-slate-800 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <Link
+            href="/privacy"
+            className="px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400 transition"
           >
-            contact@example.com
-          </a>
-          .
-        </p>
-      </section>
-    </main>
+            View Privacy notice
+          </Link>
+          <Link
+            href="/moderation"
+            className="px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400 transition"
+          >
+            Moderation &amp; appeals
+          </Link>
+        </footer>
+      </main>
+    </div>
   );
 }

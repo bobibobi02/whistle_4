@@ -1,4 +1,4 @@
-import { useState, FormEvent, ChangeEvent } from "react";
+﻿import { useState, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 
@@ -7,11 +7,16 @@ export default function CreatePost() {
   const { data: session, status } = useSession();
 
   const [title, setTitle] = useState("");
+    const [isCreatingPost, setIsCreatingPost] = useState(false);
+
   const [text, setText] = useState("");
+
   const [loopName, setLoopName] = useState("");
+
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   if (status === "loading") {
@@ -55,84 +60,95 @@ export default function CreatePost() {
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!title.trim() && !text.trim()) {
-      setError("Write something or add a title first.");
-      return;
-    }
+  if (isCreatingPost) return;
 
-    setIsSubmitting(true);
-    setError(null);
+  e.preventDefault();
 
-    try {
-      let imageUrl: string | null = null;
+  if (!title.trim() && !text.trim()) {
+    setError("Write something or add a title first.");
+    return;
+  }
 
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("file", imageFile);
+  if (!loopName.trim()) {
+    setError("Pick a loop for your post.");
+    return;
+  }
 
-        try {
-          const uploadRes = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
+  setIsCreatingPost(true);
+  setIsSubmitting(true);
+  setError(null);
 
-          if (uploadRes.ok) {
-            const data = await uploadRes.json();
-            if (typeof data.url === "string") {
-              imageUrl = data.url;
-            } else if (Array.isArray(data.urls) && data.urls[0]) {
-              imageUrl = data.urls[0];
-            }
+  try {
+    let imageUrl: string | null = null;
+
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append("file", imageFile);
+
+      try {
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (uploadRes.ok) {
+          const data = await uploadRes.json().catch(() => null);
+          const direct =
+            (data && (data.url || (Array.isArray(data.urls) && data.urls[0]))) ||
+            null;
+          if (direct) {
+            imageUrl = direct;
           }
-        } catch {
-          console.error("Image upload failed, creating text post only.");
         }
+      } catch {
+        console.error("Image upload failed, creating text post only.");
       }
-
-      // Build payload that works with both old and new API/DB shapes
-      const bodyText = text.trim();
-      const payload: any = {
-        title: title.trim(),
-        content: bodyText,
-        body: bodyText,
-        subforumName: loopName.trim() || null,
-      };
-
-      if (imageUrl) {
-        payload.imageUrl = imageUrl;
-        payload.mediaUrl = imageUrl;
-        payload.imageUrls = [imageUrl];
-      }
-
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(
-          data?.message || data?.error || "Something went wrong creating your post."
-        );
-      }
-
-      const created = await res.json().catch(() => null);
-      const postId = created?.id;
-
-      if (postId) {
-        router.push(`/post/${postId}`);
-      } else {
-        router.push("/feed");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Something went wrong.");
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+
+    const bodyText = text.trim() || null;
+
+    const payload: any = {
+      title: title.trim() || null,
+      body: bodyText,
+      subforumName: loopName.trim() || null,
+    };
+
+    if (imageUrl) {
+      // Support both old and new API/DB shapes
+      (payload as any).imageUrl = imageUrl;
+      (payload as any).imageUrls = [imageUrl];
+      (payload as any).mediaUrl = imageUrl;
+    }
+
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(
+        data?.message || data?.error || "Something went wrong creating your post."
+      );
+    }
+
+    const created = await res.json().catch(() => null);
+    const postId = created?.id;
+
+    if (postId) {
+      router.push(`/post/${postId}`);
+    } else {
+      router.push("/feed");
+    }
+  } catch (err: any) {
+    console.error(err);
+    setError(err.message || "Something went wrong.");
+  } finally {
+    setIsSubmitting(false);
+    setIsCreatingPost(false);
+  }
+};
 
   return (
     <div className="create-page">
@@ -263,9 +279,9 @@ export default function CreatePost() {
                 <button
                   type="submit"
                   className="post-btn"
-                  disabled={isSubmitting}
+                  disabled={isCreatingPost || isSubmitting}
                 >
-                  {isSubmitting ? "Posting…" : "Post"}
+                  {(isCreatingPost || isSubmitting) ? "Posting…" : "Post"}
                 </button>
               </div>
             </div>

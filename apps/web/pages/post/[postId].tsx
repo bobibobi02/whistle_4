@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
@@ -143,6 +143,35 @@ function readSavedLocal(id: string): boolean {
 
 /* ========= Vote helpers ========= */
 
+const LS_VOTE_PREFIX = "whistle:vote:"; // value: "up" | "down"
+
+function readVoteLocal(id: string): 0 | 1 | -1 {
+  if (typeof window === "undefined") return 0;
+  try {
+    const v = window.localStorage.getItem(LS_VOTE_PREFIX + id);
+    if (v === "up") return 1;
+    if (v === "down") return -1;
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeVoteLocal(id: string, value: 0 | 1 | -1) {
+  if (typeof window === "undefined") return;
+  try {
+    if (value === 1) {
+      window.localStorage.setItem(LS_VOTE_PREFIX + id, "up");
+    } else if (value === -1) {
+      window.localStorage.setItem(LS_VOTE_PREFIX + id, "down");
+    } else {
+      window.localStorage.removeItem(LS_VOTE_PREFIX + id);
+    }
+    window.localStorage.setItem("whistle:votes-mutated", String(Date.now()));
+  } catch {}
+}
+
+
 async function fetchPostScore(postId: string): Promise<number | null> {
   try {
     const res = await fetch("/api/vote/stats", {
@@ -179,6 +208,40 @@ async function sendVote(postId: string, value: number): Promise<boolean> {
     return res.ok;
   } catch {
     return false;
+  }
+}
+
+type VoteStats = {
+  up: number;
+  down: number;
+  score: number;
+  total: number;
+};
+
+async function fetchVoteStats(postId: string): Promise<VoteStats | null> {
+  try {
+    const res = await fetch("/api/vote/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ postId }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!data) return null;
+
+    const up =
+      typeof data.up === "number" ? data.up : 0;
+    const down =
+      typeof data.down === "number" ? data.down : 0;
+    const score =
+      typeof data.score === "number" ? data.score : up - down;
+    const total =
+      typeof data.total === "number" ? data.total : up + down;
+
+    return { up, down, score, total };
+  } catch {
+    return null;
   }
 }
 
@@ -316,7 +379,6 @@ const PostPage: React.FC = () => {
       setPost(p);
       setComments(c);
       setScore(s);
-      setMyVote(0);
 
       if (p) {
         let initial = false;
@@ -335,6 +397,12 @@ const PostPage: React.FC = () => {
     })();
   }, [postId]);
 
+
+  useEffect(() => {
+    if (!post?.id) return;
+    const v = readVoteLocal(post.id);
+    setMyVote(v);
+  }, [post?.id]);
   useEffect(() => {
     if (!post?.id) return;
     if (typeof window === "undefined") return;
@@ -550,29 +618,40 @@ const PostPage: React.FC = () => {
   };
 
   const handleVote = async (next: 1 | -1) => {
-    if (!postId || !session?.user) return;
+  if (!postId || !session?.user) return;
 
-    const prev = myVote;
-    const newVote = prev === next ? 0 : next;
+  const prev = myVote;
+  const newVote = prev === next ? 0 : next;
 
-    setMyVote(newVote);
-    setScore((s) => {
-      const base = s ?? 0;
-      return base + (newVote - prev);
-    });
+  const prevScore = score ?? 0;
+  const optimistic = prevScore + (newVote - prev);
 
-    const ok = await sendVote(postId, newVote);
-    if (!ok) {
-      setMyVote(prev);
-      setScore((s) => {
-        const base = s ?? 0;
-        return base - (newVote - prev);
-      });
-    }
-  };
+  // optimistic UI update
+  setMyVote(newVote);
+  setScore(optimistic);
+
+  // keep localStorage in sync
+  writeVoteLocal(postId, newVote);
+
+  const ok = await sendVote(postId, newVote);
+  if (!ok) {
+    // rollback on failure
+    setMyVote(prev);
+    setScore(prevScore);
+    writeVoteLocal(postId, prev);
+    return;
+  }
+
+  // refresh from backend so counts stay correct
+  const stats = await fetchVoteStats(postId);
+  if (stats) {
+    setScore(stats.score);
+  }
+};
 
   const handleToggleSave = async () => {
     if (!post) return;
+    if (saving) return;
     const id = post.id;
     const next = !saved;
 
@@ -704,9 +783,14 @@ const PostPage: React.FC = () => {
                 fontWeight: 600,
                 color: (score ?? 0) >= 0 ? "#22C55E" : "#F97316",
               }}
-            >
-              {score ?? 0}
-            </div>
+                          >
+                <span style={{ display: "block", color: "#22C55E" }}>
+                  {Math.max(0, score ?? 0)}
+                </span>
+                <span style={{ display: "block", color: "#F97316" }}>
+                  {Math.max(0, -(score ?? 0))}
+                </span>
+              </div>
             <button
               type="button"
               onClick={() => handleVote(-1)}
@@ -791,7 +875,7 @@ const PostPage: React.FC = () => {
                         opacity: saving ? 0.7 : 1,
                       }}
                     >
-                      {saved ? "Saved" : "Save"}
+                      {saving ? "Saving�" : saved ? "Saved" : "Save"}
                     </button>
                   </div>
                 </div>
@@ -927,7 +1011,7 @@ const PostPage: React.FC = () => {
                   cursor: "pointer",
                 }}
               >
-                {isUploadingImage ? "Uploading…" : "Attach image"}
+                {isUploadingImage ? "Uploading�" : "Attach image"}
               </button>
               {commentImagePreview && (
                 <div

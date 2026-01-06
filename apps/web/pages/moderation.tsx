@@ -1,53 +1,77 @@
-﻿import { useEffect, useState } from 'react';
+﻿import Link from "next/link";
 
-export default function ModerationPanel() {
-  const [reports, setReports] = useState([]);
-
-  useEffect(() => {
-    fetch('/api/moderation/reports')
-      .then(res => res.json())
-      .then(data => setReports(data));
-  }, []);
-
-  async function markAsSpam(postId) {
-    await fetch('/api/moderation/mark-spam', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId }),
-    });
-    setReports(prev => prev.filter(r => r.post?.id !== postId));
-  }
-
+export default function ModerationPage() {
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Moderation Panel</h1>
-      {reports.length === 0 ? (
-        <p>No reports to review.</p>
-      ) : (
-        reports.map(r => (
-          <div key={r.id} className="border rounded p-4 mb-4 bg-white">
-            <p><strong>Reason:</strong> {r.reason}</p>
-            <p className="text-sm text-gray-600">Reported by: {r.user.email}</p>
-            {r.post && (
-              <div>
-                <p><strong>Post:</strong> {r.post.title}</p>
-                <p>{r.post.content}</p>
-                <button
-                  className="text-sm text-red-600 underline"
-                  onClick={() => markAsSpam(r.post.id)}
-                >
-                  Mark as Spam
-                </button>
-              </div>
-            )}
-            {r.comment && (
-              <div>
-                <p><strong>Comment:</strong> {r.comment.body}</p>
-              </div>
-            )}
-          </div>
-        ))
-      )}
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <main className="max-w-3xl mx-auto px-4 py-16 space-y-10">
+        <header className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            Whistle
+          </p>
+          <h1 className="text-3xl md:text-4xl font-semibold">
+            Moderation &amp; Rules
+          </h1>
+          <p className="text-sm text-slate-400">
+            A quick overview of how moderation works on Whistle during the
+            public beta.
+          </p>
+        </header>
+
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Core principles</h2>
+          <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>Keep discussions respectful and on topic.</li>
+            <li>No illegal content, hate speech or explicit threats.</li>
+            <li>No spam, scams or automated posting abuse.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">What may be removed</h2>
+          <p className="text-sm text-slate-300">
+            Content may be removed, and accounts may be limited or suspended,
+            for example if they:
+          </p>
+          <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>Share illegal or highly unsafe material.</li>
+            <li>Target individuals or groups with harassment or threats.</li>
+            <li>Flood loops with repetitive, low-quality or automated posts.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Who moderates</h2>
+          <p className="text-sm text-slate-300">
+            During the beta, moderation is handled by the small core team.
+            Over time, moderation tools for trusted users and loop admins may
+            be introduced.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">If you think we made a mistake</h2>
+          <p className="text-sm text-slate-300">
+            Mistakes can happen. If you believe your content or account was
+            moderated unfairly, you can submit an appeal from the dedicated
+            Appeals page.
+          </p>
+        </section>
+
+        <footer className="pt-4 border-t border-slate-800 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <Link
+            href="/appeals"
+            className="px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400 transition"
+          >
+            Go to Appeals
+          </Link>
+          <Link
+            href="/"
+            className="px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400 transition"
+          >
+            Go home
+          </Link>
+        </footer>
+      </main>
     </div>
   );
 }

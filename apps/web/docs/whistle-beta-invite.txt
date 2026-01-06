@@ -1,0 +1,17 @@
+﻿Hey! I’m testing a new minimalist social app called Whistle – it’s like a cleaner, loop-based version of Reddit.
+
+Try it here:
+https://whistle-p939tvjqh-bobibobis-projects.vercel.app/
+
+It’s in public beta, so a few things may still be rough or slow, but the core flows should work:
+- Create an account and log in
+- Make a few posts with images + short context
+- Comment, reply, upvote/downvote
+- Save posts and then check the Saved tab
+
+If something feels broken, confusing, or too slow, please tell me:
+- what page you were on
+- what you tried to do
+- and what happened (error message / weird behavior).
+
+Any feedback is super helpful at this stage.

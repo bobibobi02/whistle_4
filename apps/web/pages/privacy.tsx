@@ -1,80 +1,90 @@
-import React from "react";
+﻿import Link from "next/link";
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10 space-y-6">
-      <h1 className="text-3xl font-bold">Privacy Policy</h1>
-      <p className="text-sm text-gray-400">
-        Last updated: {new Date().getFullYear()}
-      </p>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <main className="max-w-3xl mx-auto px-4 py-16 space-y-10">
+        <header className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            Whistle
+          </p>
+          <h1 className="text-3xl md:text-4xl font-semibold">
+            Privacy Notice
+          </h1>
+          <p className="text-sm text-slate-400">
+            This page explains in simple terms how Whistle handles basic
+            account and usage data during the public beta.
+          </p>
+          <p className="text-[11px] text-amber-400">
+            This is not formal legal advice. Before a full public launch, you
+            should replace this page with a proper Privacy Policy reviewed by
+            a legal professional.
+          </p>
+        </header>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">1. Information we collect</h2>
-        <p>
-          When you use Whistle, we may collect information such as your email
-          address, username, and basic usage data (for example, which pages you
-          visit and what posts you create).
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Information we handle</h2>
+          <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>
+              Basic account details you provide, such as username and email.
+            </li>
+            <li>
+              Content you create on Whistle, such as posts, comments and
+              votes.
+            </li>
+            <li>
+              Technical data needed to run the site, such as IP address and
+              standard logs.
+            </li>
+          </ul>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">2. How we use your information</h2>
-        <p>
-          We use this information to provide and improve the Whistle service,
-          including:
-        </p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Authenticating you and keeping your account secure.</li>
-          <li>Displaying posts, comments, and loops.</li>
-          <li>Preventing abuse and spam.</li>
-        </ul>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">How this data is used</h2>
+          <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>To operate your account and keep you logged in.</li>
+            <li>To display posts, comments, votes and saved content.</li>
+            <li>To keep the platform secure and prevent abuse.</li>
+          </ul>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">3. Cookies</h2>
-        <p>
-          Whistle may use cookies or similar technologies to keep you logged in
-          and remember your preferences (such as theme or language).
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Sharing and third parties</h2>
+          <p className="text-sm text-slate-300">
+            During the beta, Whistle does not sell user data. Limited data may
+            be processed by infrastructure providers that host the service or
+            handle email and authentication.
+          </p>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">4. Sharing of data</h2>
-        <p>
-          We do not sell your personal data. We may share limited information
-          with service providers (for example, for hosting or analytics) who
-          help us run Whistle, under appropriate data protection agreements.
-        </p>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Your controls</h2>
+          <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>You can edit some profile details from the settings page.</li>
+            <li>You can delete your own posts and comments.</li>
+            <li>
+              If you want to fully remove your account, you can contact the
+              administrator using the contact details that will be provided
+              before full launch.
+            </li>
+          </ul>
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">5. Your rights</h2>
-        <p>
-          Depending on your location, you may have rights to access, correct, or
-          delete your personal data. To make a request, contact us at{" "}
-          <a
-            href="mailto:privacy@example.com"
-            className="text-green-400 underline"
+        <footer className="pt-4 border-t border-slate-800 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <Link
+            href="/terms"
+            className="px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400 transition"
           >
-            privacy@example.com
-          </a>
-          .
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">6. Contact</h2>
-        <p>
-          If you have questions about this Privacy Policy, you can contact us at{" "}
-          <a
-            href="mailto:privacy@example.com"
-            className="text-green-400 underline"
+            View Terms of Use
+          </Link>
+          <Link
+            href="/"
+            className="px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400 transition"
           >
-            privacy@example.com
-          </a>
-          .
-        </p>
-      </section>
-    </main>
+            Go home
+          </Link>
+        </footer>
+      </main>
+    </div>
   );
 }
